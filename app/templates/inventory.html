@@ -1,0 +1,1036 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory - Expiry Tracker{% endblock %}
+
+{% block content %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add validation for expiry date input
+    const expiryDateInput = document.getElementById('expiry_date');
+    if (expiryDateInput) {
+        expiryDateInput.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);  // Reset time part for fair comparison
+            
+            if (selectedDate <= today) {
+                this.setCustomValidity('Expiry date must be in the future');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    
+    // Show warning for items without expiry dates
+    document.querySelectorAll('tr').forEach(row => {
+        const statusCell = row.querySelector('td:nth-child(4)');  // Status column
+        const expiryCell = row.querySelector('td:nth-child(3)');  // Expiry date column
+        
+        if (statusCell && statusCell.textContent.trim() === '{{ STATUS_PENDING }}') {
+            row.classList.add('bg-yellow-50');
+        }
+    });
+});
+</script>
+
+<div class="container mx-auto px-4 py-8">
+    {% if not current_user.zoho_access_token %}
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        Zoho sync is not available. Please connect your Zoho account in Settings to sync your inventory.
+                        <a href="{{ url_for('main.settings') }}" class="font-medium underline text-yellow-700 hover:text-yellow-600">
+                            Go to Settings
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="flex justify-end items-center mb-6">
+            <div class="flex space-x-4">
+                <a href="{{ url_for('reports.reports') }}" class="original-button bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                    View Reports
+                </a>
+                <button id="bulkDeleteBtn" onclick="toggleBulkDelete()"
+                        class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                    Bulk Delete
+                </button>
+                <button id="deleteSelectedBtn" onclick="deleteSelectedItems()" style="display: none;"
+                        class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                    Delete Selected
+                </button>
+                <button id="cancelBulkDeleteBtn" onclick="cancelBulkDelete()" style="display: none;"
+                        class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                    Cancel
+                </button>
+                <button onclick="document.getElementById('addItemModal').classList.remove('hidden')"
+                        class="original-button bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                    Add Item
+                </button>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">Inventory</h1>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-white rounded-lg shadow p-4 mb-6">
+            <form id="filterForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+                    <select id="status" name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <option value="">All Status</option>
+                        <option value="{{ STATUS_ACTIVE }}" {% if current_status == STATUS_ACTIVE %}selected{% endif %}>Active</option>
+                        <option value="{{ STATUS_EXPIRED }}" {% if current_status == STATUS_EXPIRED %}selected{% endif %}>Expired</option>
+                        <option value="{{ STATUS_EXPIRING_SOON }}" {% if current_status == STATUS_EXPIRING_SOON %}selected{% endif %}>Expiring Soon</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="search" class="block text-sm font-medium text-gray-700">Search</label>
+                    <input type="text" id="search" name="search" value="{{ current_search }}" placeholder="Search items..."
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+            </form>
+        </div>
+
+        <!-- Items Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" style="display: none;">
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost Price</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selling Price</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for item in items %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <input type="checkbox" class="item-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500" value="{{ item.id }}" style="display: none;">
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">{{ item.name }}</div>
+                                <div class="text-sm text-gray-500">{{ item.description }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-purple-600 font-medium">{{ item.quantity }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 font-medium">{{ item.unit }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 font-medium">£{{ "%.2f"|format(item.cost_price) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-green-600 font-medium">£{{ "%.2f"|format(item.selling_price) }}</div>
+                                {% if item.discounted_price %}
+                                    <div class="text-sm text-blue-600 font-medium">
+                                        Discounted: £{{ "%.2f"|format(item.discounted_price) }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if item.expiry_date %}
+                                    <div class="text-sm text-gray-900">{{ item.expiry_date.strftime('%Y-%m-%d') }}</div>
+                                    <div class="text-sm text-gray-500">
+                                        {% if item.days_until_expiry is not none %}
+                                            {{ item.days_until_expiry }} days
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    {% if item.status == STATUS_PENDING %}
+                                        <div class="text-sm text-yellow-600">Set expiry date</div>
+                                    {% else %}
+                                        <div class="text-sm text-gray-500">N/A</div>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if item.status == 'pending_expiry_date' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Pending Expiry Date
+                                    </span>
+                                    <p class="text-xs text-gray-500 mt-1">Please set expiry date within 24 hours</p>
+                                {% elif item.status == 'expiring_soon' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                                        Expiring Soon
+                                    </span>
+                                {% elif item.status == 'active' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                {% elif item.status == 'expired' %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        Expired
+                                    </span>
+                                {% else %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        Unknown
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button data-action="edit" data-item-id="{{ item.id }}" 
+                                        class="text-blue-600 hover:text-blue-900 mr-3"
+                                        {% if item.status not in [STATUS_ACTIVE, STATUS_EXPIRING_SOON, STATUS_PENDING] %}disabled{% endif %}>
+                                    Edit
+                                </button>
+                                <button data-action="delete" data-item-id="{{ item.id }}" 
+                                        class="text-red-600 hover:text-red-900">
+                                    Delete
+                                </button>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                No items found. Connect to Zoho to sync your inventory!
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Add Item Modal -->
+<div id="addItemModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Add New Item</h3>
+            <form id="addItemForm" action="{{ url_for('main.add_item') }}" method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-gray-700">Name *</label>
+                    <input type="text" id="name" name="name" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity *</label>
+                    <input type="number" id="quantity" name="quantity" required min="0" step="0.01"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="unit" class="block text-sm font-medium text-gray-700">Unit *</label>
+                    <input type="text" id="unit" name="unit" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="cost_price" class="block text-sm font-medium text-gray-700">Cost Price *</label>
+                    <input type="number" id="cost_price" name="cost_price" required min="0" step="0.01"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                           oninput="validateDecimalPlaces(this, 2)">
+                    <p class="mt-1 text-sm text-gray-500">Enter up to 2 decimal places</p>
+                </div>
+                <div>
+                    <label for="selling_price" class="block text-sm font-medium text-gray-700">Selling Price *</label>
+                    <input type="number" id="selling_price" name="selling_price" required min="0" step="0.01"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                           oninput="validateDecimalPlaces(this, 2)">
+                    <p class="mt-1 text-sm text-gray-500">Enter up to 2 decimal places</p>
+                </div>
+                <div>
+                    <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="description" name="description" rows="3"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label for="expiry_date" class="block text-sm font-medium text-gray-700">Expiry Date *</label>
+                    <div class="mt-1 flex space-x-2">
+                        <input type="date" id="expiry_date" name="expiry_date" required
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <div class="flex items-center space-x-2">
+                            <button type="button" id="uploadBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                Upload Image
+                            </button>
+                            <input type="file" id="dateImageInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+                            <div class="relative group">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div class="absolute left-0 mt-2 w-64 p-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                    <p class="font-semibold mb-1">Date Format Information:</p>
+                                    <ul class="list-disc list-inside space-y-1">
+                                        <li>Supported formats: DD/MM/YYYY, DD-MM-YYYY</li>
+                                        <li>Example: 25/12/2024 or 25-12-2024</li>
+                                        <li>Make sure the date is clearly visible in the image</li>
+                                        <li>For best results, take a clear photo of the expiry date</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="uploadFeedback" class="mt-1 text-sm hidden">
+                        <p class="text-gray-500">Processing image...</p>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeAddModal()"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                        Add Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Item Modal -->
+<div id="editItemModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Edit Item</h3>
+            <div id="editStatusMessage" class="mb-4 hidden">
+                <p class="text-sm text-yellow-600"></p>
+            </div>
+            <form id="editItemForm" class="space-y-4">
+                <input type="hidden" id="editItemId" name="id">
+                <input type="hidden" id="editItemStatus" name="status">
+                <input type="hidden" id="editZohoItemId" name="zoho_item_id">
+                <div>
+                    <label for="editName" class="block text-sm font-medium text-gray-700">Name</label>
+                    <input type="text" name="name" id="editName" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-gray-100"
+                           disabled>
+                </div>
+                <div>
+                    <label for="editQuantity" class="block text-sm font-medium text-gray-700">Quantity</label>
+                    <input type="number" name="quantity" id="editQuantity" step="0.01" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="editUnit" class="block text-sm font-medium text-gray-700">Unit</label>
+                    <input type="text" name="unit" id="editUnit" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="editCostPrice" class="block text-sm font-medium text-gray-700">Cost Price</label>
+                    <input type="number" name="cost_price" id="editCostPrice" step="0.01" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                           oninput="validateDecimalPlaces(this, 2)">
+                    <p class="mt-1 text-sm text-gray-500">Enter up to 2 decimal places</p>
+                </div>
+                <div>
+                    <label for="editSellingPrice" class="block text-sm font-medium text-gray-700">Selling Price</label>
+                    <input type="number" name="selling_price" id="editSellingPrice" step="0.01" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                           oninput="validateDecimalPlaces(this, 2)">
+                    <p class="mt-1 text-sm text-gray-500">Enter up to 2 decimal places</p>
+                </div>
+                <div id="editDiscountedPriceContainer" class="hidden">
+                    <label for="editDiscountedPrice" class="block text-sm font-medium text-gray-700">Discounted Price</label>
+                    <input type="number" name="discounted_price" id="editDiscountedPrice" step="0.01"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                           onblur="handleDiscountedPrice(this)">
+                    <p id="editDiscountedPriceHelp" class="mt-1 text-sm text-gray-500"></p>
+                </div>
+                <div>
+                    <label for="editDescription" class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea name="description" id="editDescription" rows="2"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></textarea>
+                </div>
+                <div>
+                    <label for="editExpiryDate" class="block text-sm font-medium text-gray-700">Expiry Date</label>
+                    <div class="mt-1 flex space-x-2">
+                    <input type="date" name="expiry_date" id="editExpiryDate" required
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                        <div class="flex items-center space-x-2">
+                            <button type="button" id="editUploadBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                Upload Image
+                            </button>
+                            <input type="file" id="editDateImageInput" accept="image/*" class="hidden" onchange="handleEditImageUpload(event)">
+                            <div class="relative group">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-500 cursor-help" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <div class="absolute left-0 mt-2 w-64 p-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                    <p class="font-semibold mb-1">Date Format Information:</p>
+                                    <ul class="list-disc list-inside space-y-1">
+                                        <li>Supported formats: DD/MM/YYYY, DD-MM-YYYY</li>
+                                        <li>Example: 25/12/2024 or 25-12-2024</li>
+                                        <li>Make sure the date is clearly visible in the image</li>
+                                        <li>For best results, take a clear photo of the expiry date</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="editUploadFeedback" class="mt-1 text-sm hidden">
+                        <p class="text-gray-500">Processing image...</p>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="document.getElementById('editItemModal').classList.add('hidden')"
+                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function validateDecimalPlaces(input, maxDecimals) {
+    // Get the current value
+    let value = input.value;
+    
+    // If the value is empty, return
+    if (!value) return;
+    
+    // If the value ends with a decimal point, don't modify it
+    if (value.endsWith('.')) return;
+    
+    // Only validate if the input is complete (not in the middle of typing)
+    if (value.includes('.')) {
+        // Split into whole and decimal parts
+        const parts = value.split('.');
+        // If decimal part is longer than maxDecimals, truncate it
+        if (parts[1].length > maxDecimals) {
+            // Convert to number and back to string to handle scientific notation
+            value = parseFloat(value).toFixed(maxDecimals);
+            // Update the input value
+            input.value = value;
+        }
+    }
+}
+
+// Add this new function for handling discounted price
+function handleDiscountedPrice(input) {
+    if (!input.value) {
+        input.value = '';
+        return;
+    }
+    
+    // Only format on blur, not during typing
+    if (document.activeElement !== input) {
+        // Round to 2 decimal places
+        const value = parseFloat(input.value);
+        if (!isNaN(value)) {
+            input.value = value.toFixed(2);
+        }
+    }
+}
+
+document.getElementById('addItemForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(this);
+    const name = formData.get('name');
+    
+    // Validate required fields
+    const requiredFields = ['name', 'unit', 'quantity', 'cost_price', 'selling_price', 'expiry_date'];
+    for (const field of requiredFields) {
+        if (!formData.get(field)) {
+            alert(`Please fill in the ${field.replace('_', ' ')} field`);
+            return;
+        }
+    }
+    
+    try {
+        // Check if item exists
+        const response = await fetch('/api/v1/items/check', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ name })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to check item existence');
+        }
+        
+        const data = await response.json();
+        
+        if (data.exists) {
+            if (!confirm(`An item named "${name}" already exists. Do you want to update it?`)) {
+                return;
+            }
+            
+            // If updating, submit the form directly
+            this.submit();
+            return;
+        }
+        
+        // If creating new item, submit the form
+        this.submit();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred while adding/updating the item. Please try again.');
+    }
+});
+
+document.getElementById('editItemForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const itemId = document.getElementById('editItemId').value;
+    const itemStatus = document.getElementById('editItemStatus').value;
+    const expiryDate = new Date(formData.get('expiry_date'));
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Validate expiry date
+    if (expiryDate <= today) {
+        alert('Expiry date must be in the future');
+        return;
+    }
+    
+    // Allow editing if item is Active, Expiring Soon, or Pending Expiry Date
+    if (itemStatus !== '{{ STATUS_ACTIVE }}' && itemStatus !== '{{ STATUS_EXPIRING_SOON }}' && itemStatus !== '{{ STATUS_PENDING }}') {
+        alert('Only Active, Expiring Soon, and Pending Expiry Date items can be edited.');
+        return;
+    }
+    
+    // Format data for update
+    const data = {
+        quantity: parseFloat(formData.get('quantity')),
+        unit: formData.get('unit'),
+        cost_price: parseFloat(formData.get('cost_price')),
+        selling_price: parseFloat(formData.get('selling_price')),
+        description: formData.get('description'),
+        expiry_date: formData.get('expiry_date')
+    };
+    
+    // Add discounted price if item is Expiring Soon or Active
+    if (itemStatus === '{{ STATUS_EXPIRING_SOON }}' || itemStatus === '{{ STATUS_ACTIVE }}') {
+        const discountedPrice = formData.get('discounted_price');
+        if (discountedPrice) {
+            data.discounted_price = parseFloat(discountedPrice);
+        }
+    }
+    
+    try {
+        // Update item (this will handle both local and Zoho updates)
+        const response = await fetch(`/update_item/${itemId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to update item');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to update item: ' + error.message);
+    }
+});
+
+async function editItem(itemId) {
+    try {
+        const response = await fetch(`/get_item/${itemId}`);
+        if (!response.ok) {
+            throw new Error('Failed to get item details');
+        }
+        const result = await response.json();
+        const item = result.item;
+        
+        // Populate form fields
+        document.getElementById('editItemId').value = item.id;
+        document.getElementById('editItemStatus').value = item.status;
+        document.getElementById('editZohoItemId').value = item.zoho_item_id || '';
+        
+        // Log for debugging
+        console.log('Editing item:', {
+            id: item.id,
+            name: item.name,
+            zohoItemId: item.zoho_item_id
+        });
+        
+        document.getElementById('editName').value = item.name;
+        document.getElementById('editQuantity').value = item.quantity;
+        document.getElementById('editUnit').value = item.unit;
+        document.getElementById('editCostPrice').value = item.cost_price;
+        document.getElementById('editSellingPrice').value = item.selling_price;
+        document.getElementById('editDescription').value = item.description || '';
+        document.getElementById('editExpiryDate').value = item.expiry_date;
+        
+        // Show/hide status message and expiry date input
+        const statusMessage = document.getElementById('editStatusMessage');
+        const expiryDateInput = document.getElementById('editExpiryDate');
+        const discountedPriceContainer = document.getElementById('editDiscountedPriceContainer');
+        
+        if (statusMessage && expiryDateInput) {
+        if (item.status === '{{ STATUS_EXPIRED }}') {
+            statusMessage.classList.remove('hidden');
+                const messageP = statusMessage.querySelector('p');
+                if (messageP) {
+                    messageP.textContent = 'Expired items cannot be edited.';
+                }
+            expiryDateInput.disabled = true;
+        } else {
+            statusMessage.classList.add('hidden');
+            expiryDateInput.disabled = false;
+            // Set minimum date to today
+            const today = new Date().toISOString().split('T')[0];
+            expiryDateInput.min = today;
+            }
+        }
+            
+        // Handle discounted price field
+        if (discountedPriceContainer) {
+            if (item.status === '{{ STATUS_EXPIRING_SOON }}' || item.status === '{{ STATUS_ACTIVE }}') {
+                discountedPriceContainer.classList.remove('hidden');
+                const discountedPriceInput = document.getElementById('editDiscountedPrice');
+                if (discountedPriceInput) {
+                discountedPriceInput.value = item.discounted_price || '';
+                }
+                const helpText = document.getElementById('editDiscountedPriceHelp');
+                if (helpText) {
+                    helpText.textContent = item.status === '{{ STATUS_EXPIRING_SOON }}'
+                        ? 'Enter a discounted price for this expiring item'
+                        : 'Enter a discounted price for this active item';
+                }
+            } else {
+                discountedPriceContainer.classList.add('hidden');
+            }
+        }
+        
+        // Show the modal
+        const editModal = document.getElementById('editItemModal');
+        if (editModal) {
+            editModal.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load item details');
+    }
+}
+
+async function deleteItem(itemId) {
+    try {
+        // Get item details before deletion
+        const response = await fetch(`/get_item/${itemId}`);
+        if (!response.ok) {
+            throw new Error('Failed to get item details');
+        }
+        const result = await response.json();
+        const item = result.item;
+        
+        // Show confirmation with item details
+        if (!confirm(`Are you sure you want to delete "${item.name}"?\n\nQuantity: ${item.quantity} ${item.unit}\nExpiry Date: ${item.expiry_date || 'Not set'}\n\nThis action cannot be undone.`)) {
+            return;
+        }
+        
+        const deleteResponse = await fetch(`/delete_item/${itemId}`, {
+            method: 'DELETE'
+        });
+        
+        if (deleteResponse.ok) {
+            window.location.reload();
+        } else {
+            const error = await deleteResponse.json();
+            alert(error.error || 'Failed to delete item');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to delete item');
+    }
+}
+
+function closeAddModal() {
+    document.getElementById('addItemModal').classList.add('hidden');
+}
+
+// Filter form submission
+document.getElementById('filterForm').addEventListener('change', function() {
+    this.submit();
+});
+
+document.getElementById('search').addEventListener('keyup', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('filterForm').submit();
+    }
+});
+
+document.getElementById('expiry_date').addEventListener('change', function() {
+    const expiryDate = new Date(this.value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const helpText = document.getElementById('expiryDateHelp');
+    
+    if (expiryDate <= today) {
+        helpText.textContent = 'Expiry date must be in the future';
+        helpText.className = 'mt-1 text-sm text-red-500';
+        this.setCustomValidity('Expiry date must be in the future');
+    } else {
+        helpText.textContent = '';
+        helpText.className = 'mt-1 text-sm text-gray-500';
+        this.setCustomValidity('');
+    }
+});
+
+document.querySelectorAll('tr').forEach(row => {
+    const expiryCell = row.querySelector('td:nth-child(3)');
+    if (expiryCell && expiryCell.textContent.trim() === 'N/A') {
+        expiryCell.innerHTML += '<div class="text-sm text-red-500">Please set expiry date</div>';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Add validation for expiry date input
+    const expiryDateInput = document.getElementById('expiry_date');
+    if (expiryDateInput) {
+        expiryDateInput.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);  // Reset time part for fair comparison
+            
+            if (selectedDate <= today) {
+                this.setCustomValidity('Expiry date must be in the future');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    }
+    
+    // Show warning for items without expiry dates
+    document.querySelectorAll('tr').forEach(row => {
+        const statusCell = row.querySelector('td:nth-child(4)');  // Status column
+        const expiryCell = row.querySelector('td:nth-child(3)');  // Expiry date column
+        
+        if (statusCell && statusCell.textContent.trim() === '{{ STATUS_PENDING }}') {
+            row.classList.add('bg-yellow-50');
+        }
+    });
+});
+
+// Add validation for edit expiry date
+document.getElementById('editExpiryDate').addEventListener('change', function() {
+    const itemStatus = document.getElementById('editItemStatus').value;
+    const helpText = document.getElementById('editExpiryDateHelp');
+    
+    if (itemStatus === '{{ STATUS_ACTIVE }}' || itemStatus === '{{ STATUS_EXPIRING_SOON }}') {
+        const selectedDate = new Date(this.value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (selectedDate <= today) {
+            helpText.textContent = 'Expiry date must be in the future';
+            helpText.className = 'mt-1 text-sm text-red-500';
+            this.setCustomValidity('Expiry date must be in the future');
+        } else {
+            helpText.textContent = '';
+            helpText.className = 'mt-1 text-sm text-gray-500';
+            this.setCustomValidity('');
+        }
+    }
+});
+
+let isBulkDeleteMode = false;
+
+function toggleBulkDelete() {
+    isBulkDeleteMode = !isBulkDeleteMode;
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const cancelBulkDeleteBtn = document.getElementById('cancelBulkDeleteBtn');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const originalButtons = document.querySelectorAll('.original-button');
+    
+    if (isBulkDeleteMode) {
+        bulkDeleteBtn.style.display = 'none'; // Hide Bulk Delete button
+        checkboxes.forEach(checkbox => checkbox.style.display = 'block');
+        deleteSelectedBtn.style.display = 'inline-block';
+        cancelBulkDeleteBtn.style.display = 'inline-block';
+        selectAllCheckbox.style.display = 'block';
+        // Hide original buttons
+        originalButtons.forEach(button => button.style.display = 'none');
+    } else {
+        bulkDeleteBtn.style.display = 'inline-block'; // Show Bulk Delete button
+        checkboxes.forEach(checkbox => {
+            checkbox.style.display = 'none';
+            checkbox.checked = false;
+        });
+        deleteSelectedBtn.style.display = 'none';
+        cancelBulkDeleteBtn.style.display = 'none';
+        selectAllCheckbox.style.display = 'none';
+        selectAllCheckbox.checked = false;
+        // Show original buttons
+        originalButtons.forEach(button => button.style.display = 'inline-block');
+    }
+}
+
+function cancelBulkDelete() {
+    isBulkDeleteMode = false;
+    const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const cancelBulkDeleteBtn = document.getElementById('cancelBulkDeleteBtn');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const originalButtons = document.querySelectorAll('.original-button');
+    
+    bulkDeleteBtn.style.display = 'inline-block'; // Show Bulk Delete button
+    checkboxes.forEach(checkbox => {
+        checkbox.style.display = 'none';
+        checkbox.checked = false;
+    });
+    deleteSelectedBtn.style.display = 'none';
+    cancelBulkDeleteBtn.style.display = 'none';
+    selectAllCheckbox.style.display = 'none';
+    selectAllCheckbox.checked = false;
+    // Show original buttons
+    originalButtons.forEach(button => button.style.display = 'inline-block');
+}
+
+function deleteSelectedItems() {
+    if (!isBulkDeleteMode) return;
+    
+    const selectedItems = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+        .map(checkbox => parseInt(checkbox.value));
+    
+    if (selectedItems.length === 0) {
+        alert('Please select at least one item to delete');
+        return;
+    }
+    
+    // Get the CSRF token from the meta tag
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    console.log('CSRF Token:', csrfToken ? 'Token exists' : 'No CSRF token found');
+    
+    if (!csrfToken) {
+        alert('CSRF token missing. Please refresh the page and try again.');
+        return;
+    }
+    
+    // Log the request data for debugging
+    console.log('Sending bulk delete request with items:', selectedItems);
+    
+    fetch('/api/v1/items/bulk-delete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+            item_ids: selectedItems
+        })
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+        return response.json().then(data => {
+            console.log('Response data:', data);
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete items');
+            }
+            return data;
+        });
+    })
+    .then(data => {
+        console.log('Success response:', data);
+        alert(data.message);
+        window.location.reload();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert(error.message || 'An error occurred while deleting items');
+        // Reset bulk delete mode
+        cancelBulkDelete();
+    });
+}
+
+// Add event listener for bulk delete button
+document.getElementById('bulkDeleteBtn').addEventListener('click', () => {
+    if (isBulkDeleteMode) {
+        deleteSelectedItems();
+    } else {
+        toggleBulkDelete();
+    }
+});
+
+// Add event listener for select all checkbox
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+});
+
+// Add delegation for edit and delete buttons
+document.addEventListener('click', function(e) {
+    const button = e.target.closest('button[data-action]');
+    if (!button) return;
+    
+    const action = button.dataset.action;
+    const itemId = button.dataset.itemId;
+    
+    if (action === 'edit') {
+        editItem(itemId);
+    } else if (action === 'delete') {
+        deleteItem(itemId);
+    }
+});
+
+async function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const feedback = document.getElementById('uploadFeedback');
+    const button = document.getElementById('uploadBtn');
+    const originalButtonContent = button.innerHTML;
+    
+    try {
+        // Show loading state
+        button.innerHTML = `
+            <svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing...
+        `;
+        button.disabled = true;
+        feedback.classList.remove('hidden');
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const response = await fetch('/api/v1/date_ocr/extract', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to process image');
+        }
+        
+        if (data.date) {
+            const expiryDateInput = document.getElementById('expiry_date');
+            expiryDateInput.value = data.date;
+            // Trigger change event to update any dependent validation
+            expiryDateInput.dispatchEvent(new Event('change'));
+            feedback.innerHTML = '<p class="text-green-500">Date extracted successfully!</p>';
+        } else {
+            feedback.innerHTML = '<p class="text-yellow-500">No date found in image. Please enter manually.</p>';
+        }
+    } catch (error) {
+        console.error('Error processing image:', error);
+        feedback.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+    } finally {
+        // Restore button state
+        button.innerHTML = originalButtonContent;
+        button.disabled = false;
+        
+        // Hide feedback after 5 seconds
+        setTimeout(() => {
+            feedback.classList.add('hidden');
+        }, 5000);
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 px-4 py-2 rounded-md text-white ${
+        type === 'success' ? 'bg-green-500' : 
+        type === 'error' ? 'bg-red-500' : 
+        'bg-blue-500'
+    }`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// Add this after your existing script tags
+document.getElementById('uploadBtn').addEventListener('click', function() {
+    document.getElementById('dateImageInput').click();
+});
+
+// Add event listener for edit form upload button
+document.getElementById('editUploadBtn').addEventListener('click', function() {
+    document.getElementById('editDateImageInput').click();
+});
+
+// Add handler for edit form image upload
+async function handleEditImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const feedback = document.getElementById('editUploadFeedback');
+    const button = document.getElementById('editUploadBtn');
+    const originalButtonContent = button.innerHTML;
+    
+    try {
+        // Show loading state
+        button.innerHTML = `
+            <svg class="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing...
+        `;
+        button.disabled = true;
+        feedback.classList.remove('hidden');
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const response = await fetch('/api/v1/date_ocr/extract', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to process image');
+        }
+        
+        if (data.date) {
+            const expiryDateInput = document.getElementById('editExpiryDate');
+            expiryDateInput.value = data.date;
+            // Trigger change event to update any dependent validation
+            expiryDateInput.dispatchEvent(new Event('change'));
+            feedback.innerHTML = '<p class="text-green-500">Date extracted successfully!</p>';
+        } else {
+            feedback.innerHTML = '<p class="text-yellow-500">No date found in image. Please enter manually.</p>';
+        }
+    } catch (error) {
+        console.error('Error processing image:', error);
+        feedback.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+    } finally {
+        // Restore button state
+        button.innerHTML = originalButtonContent;
+        button.disabled = false;
+        
+        // Hide feedback after 5 seconds
+        setTimeout(() => {
+            feedback.classList.add('hidden');
+        }, 5000);
+    }
+}
+</script>
+{% endblock %} 

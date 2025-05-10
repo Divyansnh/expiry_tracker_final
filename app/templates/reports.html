@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Inventory Reports</h1>
+        <div class="flex space-x-4">
+            <button onclick="generateReport()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                Generate Report
+            </button>
+            <button onclick="refreshReports()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Items</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiring Items</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expired Items</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Low Stock Items</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for report in reports %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {{ report.date.strftime('%Y-%m-%d') }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {{ report.total_items }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">
+                        {{ report.expiring_items }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">
+                        {{ report.expired_items }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
+                        {{ report.low_stock_items }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="{{ url_for('reports.view_report', report_id=report.id) }}" class="text-blue-600 hover:text-blue-900 mr-4">View</a>
+                        <button onclick="deleteReport({{ report.id }})" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function refreshReports() {
+    window.location.reload();
+}
+
+function deleteReport(reportId) {
+    if (confirm('Are you sure you want to delete this report?')) {
+        fetch(`/reports/${reportId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({})  // Send empty JSON object
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.message) {
+                alert('Report deleted successfully');
+                window.location.reload();
+            } else {
+                alert('Failed to delete report');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to delete report');
+        });
+    }
+}
+
+function generateReport() {
+    if (confirm('Generate a new report for today?')) {
+        fetch('/reports/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({})  // Send empty JSON object
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.message) {
+                alert('Report generated successfully');
+                // Always refresh the page to show the new report in the list
+                window.location.reload();
+            } else {
+                alert('Failed to generate report');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to generate report');
+        });
+    }
+}
+</script>
+{% endblock %} 

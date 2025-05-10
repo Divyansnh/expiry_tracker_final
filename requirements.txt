@@ -1,0 +1,50 @@
+# Core Dependencies
+Flask==3.0.2
+Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+Flask-Migrate==4.0.5
+Flask-CORS==4.0.0
+Flask-Session==0.5.0
+
+# Database
+SQLAlchemy==2.0.27
+psycopg2-binary==2.9.9
+
+# API & External Services
+requests==2.31.0
+python-dotenv==1.0.1
+twilio==8.12.0
+gunicorn==21.2.0
+
+# Security
+bcrypt==4.1.2
+
+# Utils
+python-dateutil==2.8.2
+pytz==2024.1
+Pillow==10.0.0
+pandas==2.2.0
+numpy==1.26.4
+
+# Development
+black==24.1.1
+flake8==7.0.0
+mypy==1.8.0
+
+# Documentation
+Sphinx==7.2.6
+sphinx-rtd-theme==2.0.0
+
+# Additional dependencies
+Werkzeug==3.0.1
+pytest==8.0.1
+pytest-cov==4.1.0
+python-magic==0.4.27
+matplotlib==3.8.3
+seaborn==0.13.2
+opencv-python==4.6.0.66
+
+# Azure Computer Vision
+azure-cognitiveservices-vision-computervision==0.9.0
+msrest==0.7.1 

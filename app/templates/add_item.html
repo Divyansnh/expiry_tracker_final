@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Add New Item</h1>
+    
+    {% if show_warning and existing_item %}
+    <div class="modal fade show" id="duplicateWarning" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Item Already Exists</h5>
+                </div>
+                <div class="modal-body">
+                    <p>An item named "{{ existing_item.name }}" already exists in your inventory.</p>
+                    <p>Current details:</p>
+                    <ul>
+                        <li>Quantity: {{ existing_item.quantity }} {{ existing_item.unit }}</li>
+                        {% if existing_item.expiry_date %}
+                        <li>Expiry Date: {{ existing_item.expiry_date.strftime('%Y-%m-%d') }}</li>
+                        {% endif %}
+                        <li>Status: {{ existing_item.status }}</li>
+                    </ul>
+                    <p>Would you like to update the existing item with the new details?</p>
+                </div>
+                <div class="modal-footer">
+                    <form method="POST" action="{{ url_for('main.add_item') }}">
+                        <input type="hidden" name="confirm_update" value="true">
+                        <input type="hidden" name="name" value="{{ name }}">
+                        <input type="hidden" name="description" value="{{ description }}">
+                        <input type="hidden" name="quantity" value="{{ quantity }}">
+                        <input type="hidden" name="unit" value="{{ unit }}">
+                        <input type="hidden" name="expiry_date" value="{{ expiry_date }}">
+                        <input type="hidden" name="purchase_price" value="{{ purchase_price }}">
+                        <input type="hidden" name="selling_price" value="{{ selling_price }}">
+                        <input type="hidden" name="cost_price" value="{{ cost_price }}">
+                        <input type="hidden" name="location" value="{{ location }}">
+                        <input type="hidden" name="notes" value="{{ notes }}">
+                        <button type="submit" class="btn btn-primary">Update Existing Item</button>
+                    </form>
+                    <a href="{{ url_for('main.add_item') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <form method="POST" action="{{ url_for('main.add_item') }}" class="space-y-4">
+        <div class="form-group">
+            <label for="name">Item Name</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ name or '' }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea class="form-control" id="description" name="description">{{ description or '' }}</textarea>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                <label for="quantity">Quantity</label>
+                <input type="number" class="form-control" id="quantity" name="quantity" value="{{ quantity or 0 }}" step="0.01" required>
+            </div>
+            
+            <div class="form-group col-md-6">
+                <label for="unit">Unit</label>
+                <input type="text" class="form-control" id="unit" name="unit" value="{{ unit or '' }}" required>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="expiry_date">Expiry Date</label>
+            <input type="date" class="form-control" id="expiry_date" name="expiry_date" value="{{ expiry_date or '' }}">
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                <label for="purchase_price">Purchase Price</label>
+                <input type="number" class="form-control" id="purchase_price" name="purchase_price" value="{{ purchase_price or 0 }}" step="0.01">
+            </div>
+            
+            <div class="form-group col-md-4">
+                <label for="selling_price">Selling Price</label>
+                <input type="number" class="form-control" id="selling_price" name="selling_price" value="{{ selling_price or 0 }}" step="0.01">
+            </div>
+            
+            <div class="form-group col-md-4">
+                <label for="cost_price">Cost Price</label>
+                <input type="number" class="form-control" id="cost_price" name="cost_price" value="{{ cost_price or 0 }}" step="0.01">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="location">Location</label>
+            <input type="text" class="form-control" id="location" name="location" value="{{ location or '' }}">
+        </div>
+        
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea class="form-control" id="notes" name="notes">{{ notes or '' }}</textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Add Item</button>
+        <a href="{{ url_for('main.inventory') }}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %} 

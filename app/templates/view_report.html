@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Inventory Report - {{ report.date.strftime('%Y-%m-%d') }}</h1>
+        {% if not is_public %}
+        <div class="flex space-x-4">
+            <button onclick="window.print()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                Print Report
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if report.report_data %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Total Items</h3>
+            <p class="text-3xl font-bold text-blue-600">
+                {% if report.report_data.get('summary') %}
+                    {{ report.report_data.get('summary', {}).get('total_items', 0) }}
+                {% else %}
+                    {{ report.report_data.get('items_by_status', {}).get('active', 0) }}
+                {% endif %}
+            </p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Expiring Items</h3>
+            <p class="text-3xl font-bold text-yellow-600">
+                {% if report.report_data.get('summary') %}
+                    {{ report.report_data.get('summary', {}).get('expiring_items', 0) }}
+                {% else %}
+                    {{ report.report_data.get('items_by_status', {}).get('expiring_soon', 0) }}
+                {% endif %}
+            </p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Critical Items</h3>
+            <p class="text-3xl font-bold text-red-600">
+                {% if report.report_data.get('summary') %}
+                    {{ report.report_data.get('summary', {}).get('critical_items', 0) }}
+                {% else %}
+                    {{ report.report_data.get('items_by_status', {}).get('expired', 0) }}
+                {% endif %}
+            </p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">Low Stock Items</h3>
+            <p class="text-3xl font-bold text-orange-600">
+                {% if report.report_data.get('summary') %}
+                    {{ report.report_data.get('summary', {}).get('low_stock_items', 0) }}
+                {% else %}
+                    {{ report.report_data.get('items_by_status', {}).get('low_stock', 0) }}
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <!-- Action Recommendations -->
+    {% if report.report_data.get('action_recommendations') %}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Action Recommendations</h2>
+        <div class="space-y-4">
+            {% for recommendation in report.report_data.get('action_recommendations', []) %}
+            <div class="p-4 rounded-lg {% if recommendation.get('type') == 'urgent' %}bg-red-50{% elif recommendation.get('type') == 'high_priority' %}bg-yellow-50{% else %}bg-blue-50{% endif %}">
+                <p class="text-gray-800">{{ recommendation.get('message', '') }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Expiry Analysis -->
+    {% if report.report_data.get('expiry_analysis') or report.report_data.get('expiring_items_list') %}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Expiry Analysis</h2>
+        
+        {% if report.report_data.get('expiry_analysis') %}
+            <!-- Next Week -->
+            {% if report.report_data.get('expiry_analysis', {}).get('next_week', {}).get('items') %}
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-red-600 mb-4">Items Expiring in Next Week ({{ report.report_data.get('expiry_analysis', {}).get('next_week', {}).get('count', 0) }})</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for item in report.report_data.get('expiry_analysis', {}).get('next_week', {}).get('items', []) %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ item.get('days_until_expiry', 0) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Next Month -->
+            {% if report.report_data.get('expiry_analysis', {}).get('next_month', {}).get('items') %}
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-orange-600 mb-4">Items Expiring in Next Month ({{ report.report_data.get('expiry_analysis', {}).get('next_month', {}).get('count', 0) }})</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for item in report.report_data.get('expiry_analysis', {}).get('next_month', {}).get('items', []) %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{{ item.get('days_until_expiry', 0) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Next Quarter -->
+            {% if report.report_data.get('expiry_analysis', {}).get('next_quarter', {}).get('items') %}
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-yellow-600 mb-4">Items Expiring in Next Quarter ({{ report.report_data.get('expiry_analysis', {}).get('next_quarter', {}).get('count', 0) }})</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for item in report.report_data.get('expiry_analysis', {}).get('next_quarter', {}).get('items', []) %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-yellow-600">{{ item.get('days_until_expiry', 0) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <!-- Legacy Expiring Items List -->
+            {% if report.report_data.get('expiring_items_list') %}
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-red-600 mb-4">Expiring Items</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for item in report.report_data.get('expiring_items_list', []) %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ item.get('days_until_expiry', 0) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Risk Analysis -->
+    {% if report.report_data.get('risk_analysis') %}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Risk Analysis</h2>
+        
+        <!-- Critical Items -->
+        {% if report.report_data.get('risk_analysis', {}).get('critical_items') %}
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-red-600 mb-4">Critical Items</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in report.report_data.get('risk_analysis', {}).get('critical_items', []) %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ item.get('days_until_expiry', 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- High Value Expiring Items -->
+        {% if report.report_data.get('risk_analysis', {}).get('high_value_expiring') %}
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-orange-600 mb-4">High Value Expiring Items</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in report.report_data.get('risk_analysis', {}).get('high_value_expiring', []) %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{{ item.get('days_until_expiry', 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Historical Comparison -->
+    {% if report.report_data.get('historical_comparison', {}).get('last_week') %}
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Historical Comparison (vs Last Week)</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500">Expiring Items</h3>
+                <div class="mt-2 flex items-baseline">
+                    <p class="text-2xl font-semibold text-gray-900">{{ report.report_data.get('summary', {}).get('expiring_items', 0) }}</p>
+                    <p class="ml-2 text-sm text-gray-500">vs {{ report.report_data.get('historical_comparison', {}).get('last_week', {}).get('expiring_items', 0) }}</p>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500">Expired Items</h3>
+                <div class="mt-2 flex items-baseline">
+                    <p class="text-2xl font-semibold text-gray-900">{{ report.report_data.get('summary', {}).get('expired_items', 0) }}</p>
+                    <p class="ml-2 text-sm text-gray-500">vs {{ report.report_data.get('historical_comparison', {}).get('last_week', {}).get('expired_items', 0) }}</p>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500">Low Stock Items</h3>
+                <div class="mt-2 flex items-baseline">
+                    <p class="text-2xl font-semibold text-gray-900">{{ report.report_data.get('summary', {}).get('low_stock_items', 0) }}</p>
+                    <p class="ml-2 text-sm text-gray-500">vs {{ report.report_data.get('historical_comparison', {}).get('last_week', {}).get('low_stock_items', 0) }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-6">
+        <p class="text-gray-600">No report data available.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

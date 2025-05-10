@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Expiry Tracker{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Welcome Section -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Welcome, {{ current_user.username }}!</h1>
+        <p class="mt-2 text-gray-600">Here's an overview of your inventory and notifications.</p>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Total Items</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ items|length }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Expiring Soon</h3>
+            <p class="text-3xl font-bold text-yellow-600">{{ expiring_items|length }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Expired Items</h3>
+            <p class="text-3xl font-bold text-red-600">{{ expired_items|length }}</p>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Expiring Items by Category</h3>
+            <div style="height: 200px;">
+                <canvas id="categoryDistributionChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Upcoming Expirations (Next 60 Days)</h3>
+            <div style="height: 200px;">
+                <canvas id="expiryTimelineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Notifications -->
+    <div class="bg-white rounded-lg shadow mb-8">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Notifications</h2>
+            {% if notifications %}
+                <div class="space-y-4">
+                    {% for notification in notifications %}
+                        <div class="flex items-start p-4 bg-gray-50 rounded-lg">
+                            <div class="flex-shrink-0">
+                                <span class="text-blue-500">📧</span>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-gray-900">{{ notification.message }}</p>
+                                <p class="text-xs text-gray-500 mt-1">{{ notification.created_at }}</p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Email Notification
+                                </p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">No recent notifications.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+            <div class="space-y-4">
+                <a href="{{ url_for('main.inventory') }}" class="block w-full text-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                    Manage Inventory
+                </a>
+                <a href="{{ url_for('main.notifications') }}" class="block w-full text-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    View All Notifications
+                </a>
+                <a href="{{ url_for('main.settings') }}" class="block w-full text-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Settings
+                </a>
+            </div>
+        </div>
+
+        <!-- Expiring Items -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Expiring Soon</h2>
+            {% if expiring_items %}
+                <div class="space-y-4">
+                    {% for item in expiring_items %}
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ item.name }}</p>
+                                <p class="text-xs text-gray-500">Expires in {{ item.days_until_expiry }} days</p>
+                            </div>
+                            <a href="{{ url_for('main.inventory') }}" class="text-sm text-blue-600 hover:text-blue-500">
+                                View
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">No items expiring soon.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Chart Initialization -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Category Distribution Chart
+    const categoryCtx = document.getElementById('categoryDistributionChart').getContext('2d');
+    
+    // Group expiring items by category
+    const categoryData = {};
+    const categoryItems = {};
+    const expiringItemsData = JSON.parse('{{ expiring_items|tojson|safe }}');
+    expiringItemsData.forEach(item => {
+        const category = item.category || 'Uncategorized';
+        categoryData[category] = (categoryData[category] || 0) + 1;
+        if (!categoryItems[category]) {
+            categoryItems[category] = [];
+        }
+        categoryItems[category].push({
+            name: item.name,
+            daysUntilExpiry: item.days_until_expiry
+        });
+    });
+
+    // Sort categories by count
+    const sortedCategories = Object.entries(categoryData)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5); // Show top 5 categories
+
+    new Chart(categoryCtx, {
+        type: 'bar',
+        data: {
+            labels: sortedCategories.map(cat => cat[0]),
+            datasets: [{
+                label: 'Number of Items',
+                data: sortedCategories.map(cat => cat[1]),
+                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                borderColor: 'rgba(255, 193, 7, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return `${context[0].label} (${context[0].raw} items)`;
+                        },
+                        label: function(context) {
+                            const category = context.label;
+                            const items = categoryItems[category];
+                            if (!items) return [];
+                            
+                            // Sort items by days until expiry
+                            const sortedItems = items.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+                            
+                            return [
+                                'Items expiring soonest:',
+                                ...sortedItems.slice(0, 3).map(item => 
+                                    `${item.name} - ${item.daysUntilExpiry} days`
+                                ),
+                                sortedItems.length > 3 ? `...and ${sortedItems.length - 3} more` : ''
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    },
+                    title: {
+                        display: true,
+                        text: 'Number of Items'
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Expiry Timeline Chart
+    const timelineCtx = document.getElementById('expiryTimelineChart').getContext('2d');
+    
+    // Prepare data for the next 60 days
+    const today = new Date();
+    const next60Days = Array.from({length: 60}, (_, i) => {
+        const date = new Date(today);
+        date.setDate(date.getDate() + i);
+        return date;
+    });
+
+    // Format dates for display
+    const dateLabels = next60Days.map(date => {
+        const month = date.toLocaleString('default', { month: 'short' });
+        const day = date.getDate();
+        return `${month} ${day}`;
+    });
+
+    // Prepare data for the chart
+    const expiringItems = JSON.parse('{{ expiring_items|tojson|safe }}');
+    const expiryData = next60Days.map(date => {
+        const dateStr = date.toISOString().split('T')[0];
+        const items = expiringItems.filter(item => {
+            // Parse the ISO date string
+            const itemDate = new Date(item.expiry_date);
+            const itemDateStr = itemDate.toISOString().split('T')[0];
+            return itemDateStr === dateStr;
+        });
+        return {
+            count: items.length,
+            items: items.map(item => ({
+                name: item.name,
+                category: item.category || 'Uncategorized',
+                daysUntilExpiry: item.days_until_expiry
+            }))
+        };
+    });
+
+    new Chart(timelineCtx, {
+        type: 'line',
+        data: {
+            labels: dateLabels,
+            datasets: [{
+                label: 'Items Expiring',
+                data: expiryData.map(d => d.count),
+                borderColor: 'rgba(255, 193, 7, 1)',
+                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return `Expiring on ${dateLabels[context[0].dataIndex]}`;
+                        },
+                        label: function(context) {
+                            const data = expiryData[context.dataIndex];
+                            if (data.count === 0) return 'No items expiring';
+                            return [
+                                `${data.count} item${data.count > 1 ? 's' : ''} expiring:`,
+                                ...data.items.map(item => 
+                                    `${item.name} (${item.category}) - ${item.daysUntilExpiry} days`
+                                )
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    },
+                    title: {
+                        display: true,
+                        text: 'Number of Items'
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %} 

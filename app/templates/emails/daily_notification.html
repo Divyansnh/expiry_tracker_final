@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .summary {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 25px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .section-header {
+            padding: 10px 15px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 0;
+        }
+        .item-list {
+            margin: 0;
+            padding: 0;
+        }
+        .item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .item:last-child {
+            border-bottom: none;
+        }
+        .item-name {
+            font-weight: bold;
+        }
+        .item-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .urgent {
+            background-color: #fff3f3;
+        }
+        .urgent .section-header {
+            background-color: #dc3545;
+        }
+        .urgent .item-status {
+            background-color: #dc3545;
+            color: white;
+        }
+        .warning {
+            background-color: #fff9e6;
+        }
+        .warning .section-header {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .warning .item-status {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .info {
+            background-color: #f8f9fa;
+        }
+        .info .section-header {
+            background-color: #6c757d;
+        }
+        .info .item-status {
+            background-color: #6c757d;
+            color: white;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Daily Inventory Alert</h2>
+            <p>Hello {{ user.username }},</p>
+            <p>Here's your daily summary of items that need attention:</p>
+        </div>
+
+        <div class="summary">
+            <h3>Quick Summary</h3>
+            <p>You have {{ items|length }} items that need attention:</p>
+            <ul>
+                <li>High Priority (Expiring today/tomorrow): {{ items|selectattr('priority', 'equalto', 'high')|list|length }}</li>
+                <li>Normal Priority (Expiring in 2-7 days): {{ items|selectattr('priority', 'equalto', 'normal')|list|length }}</li>
+                <li>Low Priority (Expiring in 8+ days): {{ items|selectattr('priority', 'equalto', 'low')|list|length }}</li>
+            </ul>
+        </div>
+
+        {% if items %}
+            {% set urgent_items = items|selectattr('priority', 'equalto', 'high')|list %}
+            {% if urgent_items %}
+            <div class="section urgent">
+                <h3 class="section-header">⚠️ Urgent Attention Needed</h3>
+                <ul class="item-list">
+                    {% for item in urgent_items %}
+                    <li class="item">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-status">
+                            {% if item.days_until_expiry == 0 %}
+                                Expires today!
+                            {% elif item.days_until_expiry == 1 %}
+                                Expires tomorrow
+                            {% else %}
+                                Expires in {{ item.days_until_expiry }} days
+                            {% endif %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% set warning_items = items|selectattr('priority', 'equalto', 'normal')|list %}
+            {% if warning_items %}
+            <div class="section warning">
+                <h3 class="section-header">⚠️ Expiring Soon</h3>
+                <ul class="item-list">
+                    {% for item in warning_items %}
+                    <li class="item">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-status">Expires in {{ item.days_until_expiry }} days</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% set info_items = items|selectattr('priority', 'equalto', 'low')|list %}
+            {% if info_items %}
+            <div class="section info">
+                <h3 class="section-header">ℹ️ Future Expiries</h3>
+                <ul class="item-list">
+                    {% for item in info_items %}
+                    <li class="item">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-status">Expires in {{ item.days_until_expiry }} days</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        {% endif %}
+
+        <div class="footer">
+            <p>Please check your inventory to take necessary action.</p>
+            <p>You can view and manage your inventory in your dashboard.</p>
+        </div>
+    </div>
+</body>
+</html> 
