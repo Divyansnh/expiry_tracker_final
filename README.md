@@ -37,19 +37,23 @@ For detailed information about the notification system, see [docs/maintenance/no
 
 ## Tech Stack
 
-- **Backend**: Python, Flask
+- **Backend**: Python, Flask 3.0.2
 - **Frontend**: HTML, CSS, JavaScript, Tailwind CSS
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL with SQLAlchemy 2.0
 - **OCR**: Azure Computer Vision
 - **Email**: SMTP (Gmail)
-- **Authentication**: Flask-Login, JWT
-- **API**: RESTful
+- **Authentication**: Flask-Login
+- **API**: RESTful with Flask-CORS
 - **Task Scheduling**: APScheduler
-- **Documentation**: Markdown
+- **Documentation**: Sphinx with RTD theme
+- **Development Tools**: Black, Flake8, MyPy
+- **Testing**: Pytest with coverage
+- **Data Analysis**: Pandas, NumPy, Matplotlib, Seaborn
+- **Image Processing**: OpenCV, Pillow
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.9+ (required for Flask 3.0.2)
 - PostgreSQL
 - Azure Computer Vision account
 - Gmail account for email notifications
@@ -142,13 +146,12 @@ expiry-tracker/
 │   ├── utils/             # Utility functions
 │   ├── config.py          # Configuration
 │   └── __init__.py        # Application factory
-├── backups/               # Database backups
-├── config/                # Configuration files
 ├── debug_images/          # OCR debug images
 ├── docs/                  # Documentation
 ├── logs/                  # Application logs
 ├── migrations/            # Database migrations
 ├── scripts/               # Utility scripts
+├── test_images/          # Test images for OCR and processing
 ├── tests/                 # Test files
 ├── .env                   # Environment variables
 ├── .env.example           # Example environment variables
@@ -170,6 +173,31 @@ Comprehensive documentation is available in the `docs/` directory:
 - Security documentation
 - Maintenance procedures
 - Troubleshooting guides
+
+## Development
+
+The project uses several development tools to maintain code quality:
+
+- **Black**: Code formatting
+- **Flake8**: Linting
+- **MyPy**: Static type checking
+- **Pytest**: Testing with coverage reports
+
+To run the development tools:
+
+```bash
+# Format code
+black .
+
+# Run linter
+flake8
+
+# Run type checking
+mypy .
+
+# Run tests with coverage
+pytest --cov=app tests/
+```
 
 ## Contributing
 
