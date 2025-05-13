@@ -268,6 +268,12 @@ def about():
     """About page."""
     return render_template('about.html')
 
+def format_to_title_case(name: str) -> str:
+    """Format a string to Title Case."""
+    if not name:
+        return ""
+    return ' '.join(word.capitalize() for word in name.lower().split())
+
 @main_bp.route('/add_item', methods=['POST'])
 @login_required
 def add_item():
@@ -278,7 +284,7 @@ def add_item():
             data = request.get_json()
         else:
             data = {
-                'name': request.form.get('name'),
+                'name': request.form.get('name', ''),
                 'quantity': request.form.get('quantity'),
                 'unit': request.form.get('unit'),
                 'selling_price': request.form.get('selling_price'),
@@ -286,6 +292,10 @@ def add_item():
                 'description': request.form.get('description'),
                 'expiry_date': request.form.get('expiry_date')
             }
+        
+        # Format the name to Title Case
+        if data['name']:
+            data['name'] = format_to_title_case(data['name'])
         
         current_app.logger.info(f"Received add_item request with data: {data}")
         
@@ -411,6 +421,10 @@ def update_item(item_id):
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
         
+        # Format the name to Title Case if it's being updated
+        if 'name' in data:
+            data['name'] = format_to_title_case(data['name'])
+        
         # Update item in local database
         item.name = data.get('name', item.name)
         
@@ -422,12 +436,17 @@ def update_item(item_id):
         if 'cost_price' in data:
             item.cost_price = float(data['cost_price']) if data['cost_price'] is not None else None
         if 'discounted_price' in data:
-            # Handle empty string or None
-            if data['discounted_price'] is None or data['discounted_price'] == '':
+            # Handle empty string, None, or zero
+            if data['discounted_price'] is None or data['discounted_price'] == '' or data['discounted_price'] == '0':
                 item.discounted_price = None
             else:
-                # Round to 2 decimal places
-                item.discounted_price = round(float(data['discounted_price']), 2)
+                # Convert to float and round to 2 decimal places
+                try:
+                    price = float(data['discounted_price'])
+                    # Only set if price is greater than 0
+                    item.discounted_price = round(price, 2) if price > 0 else None
+                except (ValueError, TypeError):
+                    item.discounted_price = None
             
         item.unit = data.get('unit', item.unit)
         item.description = data.get('description', item.description)
