@@ -347,6 +347,9 @@ class ZohoService:
             return None
             
         try:
+            # Trim the name to match Zoho's behavior
+            name = name.strip()
+            
             # First try to find active items
             response = requests.get(
                 f"{self.base_url}/items",
@@ -402,6 +405,9 @@ class ZohoService:
             return None
         
         try:
+            # Trim the name to match Zoho's behavior
+            item_data['name'] = item_data['name'].strip()
+            
             current_app.logger.info(f"Creating item in Zoho: {item_data['name']}")
             
             # Check if item already exists
