@@ -4,6 +4,20 @@
 
 {% block content %}
 <script>
+function sanitizeInput(input) {
+    // Remove HTML tags
+    let value = input.value.replace(/<[^>]*>/g, '');
+    
+    // Remove special characters except basic punctuation
+    value = value.replace(/[^a-zA-Z0-9\s.,!?-]/g, '');
+    
+    // Trim whitespace
+    value = value.trim();
+    
+    // Update input value
+    input.value = value;
+}
+
 function formatToTitleCase(str) {
     return str.toLowerCase().split(' ').map(word => 
         word.charAt(0).toUpperCase() + word.slice(1)
@@ -115,13 +129,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" style="display: none;">
                         </th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cost Price</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selling Price</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable(1)">
+                            Name <span class="sort-icon">↕</span>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable(2)">
+                            Quantity <span class="sort-icon">↕</span>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unit
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable(4)">
+                            Cost Price <span class="sort-icon">↕</span>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable(5)">
+                            Selling Price <span class="sort-icon">↕</span>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable(6)">
+                            Expiry Date <span class="sort-icon">↕</span>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable(7)">
+                            Status <span class="sort-icon">↕</span>
+                        </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -220,19 +248,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700">Name *</label>
-                    <input type="text" id="name" name="name" required
+                    <input type="text" id="name" name="name" required maxlength="100"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                           onblur="this.value = formatToTitleCase(this.value)">
+                           onblur="sanitizeInput(this); this.value = formatToTitleCase(this.value)">
+                    <p class="mt-1 text-sm text-gray-500">Maximum 100 characters</p>
                 </div>
                 <div>
                     <label for="quantity" class="block text-sm font-medium text-gray-700">Quantity *</label>
                     <input type="number" id="quantity" name="quantity" required min="0" step="0.01"
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                           onblur="handleQuantityInput(this)">
                 </div>
                 <div>
                     <label for="unit" class="block text-sm font-medium text-gray-700">Unit *</label>
-                    <input type="text" id="unit" name="unit" required
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <input type="text" id="unit" name="unit" required maxlength="20"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                           onblur="sanitizeInput(this)">
+                    <p class="mt-1 text-sm text-gray-500">Maximum 20 characters</p>
                 </div>
                 <div>
                     <label for="cost_price" class="block text-sm font-medium text-gray-700">Cost Price *</label>
@@ -250,8 +282,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div>
                     <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea id="description" name="description" rows="3"
-                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                    <textarea id="description" name="description" rows="3" maxlength="500"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                              onblur="sanitizeInput(this)"></textarea>
+                    <p class="mt-1 text-sm text-gray-500">Maximum 500 characters</p>
                 </div>
                 <div>
                     <label for="expiry_date" class="block text-sm font-medium text-gray-700">Expiry Date *</label>
@@ -312,20 +346,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="hidden" id="editZohoItemId" name="zoho_item_id">
                 <div>
                     <label for="editName" class="block text-sm font-medium text-gray-700">Name</label>
-                    <input type="text" name="name" id="editName" required
+                    <input type="text" name="name" id="editName" required maxlength="100"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm bg-gray-100"
-                           onblur="this.value = formatToTitleCase(this.value)"
+                           onblur="sanitizeInput(this); this.value = formatToTitleCase(this.value)"
                            disabled>
+                    <p class="mt-1 text-sm text-gray-500">Maximum 100 characters</p>
                 </div>
                 <div>
                     <label for="editQuantity" class="block text-sm font-medium text-gray-700">Quantity</label>
-                    <input type="number" name="quantity" id="editQuantity" step="0.01" required
+                    <input type="number" name="quantity" id="editQuantity" step="0.01" required min="0" onblur="handleQuantityInput(this)"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                 </div>
                 <div>
                     <label for="editUnit" class="block text-sm font-medium text-gray-700">Unit</label>
-                    <input type="text" name="unit" id="editUnit" required
-                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                    <input type="text" name="unit" id="editUnit" required maxlength="20"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                           onblur="sanitizeInput(this)">
+                    <p class="mt-1 text-sm text-gray-500">Maximum 20 characters</p>
                 </div>
                 <div>
                     <label for="editCostPrice" class="block text-sm font-medium text-gray-700">Cost Price</label>
@@ -350,8 +387,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div>
                     <label for="editDescription" class="block text-sm font-medium text-gray-700">Description</label>
-                    <textarea name="description" id="editDescription" rows="2"
-                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></textarea>
+                    <textarea name="description" id="editDescription" rows="2" maxlength="500"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                              onblur="sanitizeInput(this)"></textarea>
+                    <p class="mt-1 text-sm text-gray-500">Maximum 500 characters</p>
                 </div>
                 <div>
                     <label for="editExpiryDate" class="block text-sm font-medium text-gray-700">Expiry Date</label>
@@ -434,11 +473,18 @@ function handlePriceInput(input) {
         // Round to 2 decimal places
         const value = parseFloat(input.value);
         if (!isNaN(value)) {
+            // Check for negative values
+            if (value < 0) {
+                alert('Price cannot be negative');
+                input.value = '';
+                return;
+            }
+            
             // Only format if the value is different from what's displayed
             // This prevents unwanted rounding while typing
             const currentDisplay = parseFloat(input.value);
             if (Math.abs(value - currentDisplay) > 0.001) {
-            input.value = value.toFixed(2);
+                input.value = value.toFixed(2);
             }
         }
     }
@@ -455,6 +501,13 @@ function handleDiscountedPrice(input) {
     if (document.activeElement !== input) {
         const value = parseFloat(input.value);
         if (!isNaN(value)) {
+            // Check for negative values
+            if (value < 0) {
+                alert('Discounted price cannot be negative');
+                input.value = '';
+                return;
+            }
+            
             // If the value is 0, keep it as 0
             if (value === 0) {
                 input.value = '0';
@@ -1068,6 +1121,89 @@ async function handleEditImageUpload(event) {
             feedback.classList.add('hidden');
         }, 5000);
     }
+}
+
+let currentSort = {
+    column: null,
+    direction: 'asc'
+};
+
+function sortTable(columnIndex) {
+    const table = document.querySelector('table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Update sort direction
+    if (currentSort.column === columnIndex) {
+        currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSort.column = columnIndex;
+        currentSort.direction = 'asc';
+    }
+    
+    // Update sort icons
+    document.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '↕');
+    const currentIcon = document.querySelector(`th:nth-child(${columnIndex + 1}) .sort-icon`);
+    currentIcon.textContent = currentSort.direction === 'asc' ? '↑' : '↓';
+    
+    // Sort rows
+    rows.sort((a, b) => {
+        let aValue = a.cells[columnIndex].textContent.trim();
+        let bValue = b.cells[columnIndex].textContent.trim();
+        
+        // Handle special cases
+        if (columnIndex === 1) { // Name column
+            return aValue.localeCompare(bValue) * (currentSort.direction === 'asc' ? 1 : -1);
+        } else if (columnIndex === 2) { // Quantity
+            aValue = parseFloat(aValue) || 0;
+            bValue = parseFloat(bValue) || 0;
+        } else if (columnIndex === 4 || columnIndex === 5) { // Cost Price or Selling Price
+            aValue = parseFloat(aValue.replace('£', '')) || 0;
+            bValue = parseFloat(bValue.replace('£', '')) || 0;
+        } else if (columnIndex === 6) { // Expiry Date
+            // Get the main date text and days text
+            const aDateText = a.cells[columnIndex].querySelector('.text-gray-900')?.textContent || '';
+            const bDateText = b.cells[columnIndex].querySelector('.text-gray-900')?.textContent || '';
+            const aDays = a.cells[columnIndex].querySelector('.text-gray-500')?.textContent;
+            const bDays = b.cells[columnIndex].querySelector('.text-gray-500')?.textContent;
+            
+            // If both items have dates, sort by days until expiry
+            if (aDays && bDays) {
+                aValue = parseInt(aDays) || 999;
+                bValue = parseInt(bDays) || 999;
+            }
+            // If one item has date and other doesn't, put the one without date first
+            else if (aDays && !bDays) {
+                aValue = 1;
+                bValue = 0;
+            }
+            else if (!aDays && bDays) {
+                aValue = 0;
+                bValue = 1;
+            }
+            // If both items don't have dates, sort by their text
+            else {
+                aValue = aDateText;
+                bValue = bDateText;
+            }
+        }
+        
+        // Compare values
+        if (aValue < bValue) return currentSort.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return currentSort.direction === 'asc' ? 1 : -1;
+        
+        // If values are equal, sort by name
+        if (columnIndex === 2 || columnIndex === 4 || columnIndex === 5 || columnIndex === 6 || columnIndex === 7) {
+            const aName = a.cells[1].textContent.trim();
+            const bName = b.cells[1].textContent.trim();
+            return aName.localeCompare(bName);
+        }
+        
+        return 0;
+    });
+    
+    // Reorder rows
+    rows.forEach(row => tbody.appendChild(row));
 }
 </script>
 {% endblock %} 

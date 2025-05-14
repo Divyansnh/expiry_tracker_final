@@ -39,17 +39,30 @@ def dashboard():
         # Get expiring and expired items
         expiring_items = [item.to_dict() for item in items if item.status == STATUS_EXPIRING_SOON]
         expired_items = [item.to_dict() for item in items if item.status == STATUS_EXPIRED]
+        active_items = [item.to_dict() for item in items if item.status == STATUS_ACTIVE]
+        all_items_dict = [item.to_dict() for item in items]
         
-        current_app.logger.info(f"Expiring items: {len(expiring_items)}, Expired items: {len(expired_items)}")
+        # Calculate total values for each category
+        total_active_value = sum(item['quantity'] * item['cost_price'] for item in active_items if item['quantity'] and item['cost_price'])
+        total_expiring_value = sum(item['quantity'] * item['cost_price'] for item in expiring_items if item['quantity'] and item['cost_price'])
+        total_expired_value = sum(item['quantity'] * item['cost_price'] for item in expired_items if item['quantity'] and item['cost_price'])
+        total_value = sum(item['quantity'] * item['cost_price'] for item in all_items_dict if item['quantity'] and item['cost_price'])
+        
+        current_app.logger.info(f"Expiring items: {len(expiring_items)}, Expired items: {len(expired_items)}, Active items: {len(active_items)}")
         
         # Get recent notifications using NotificationService
         notification_service = NotificationService()
         notifications = notification_service.get_user_notifications(current_user.id, limit=5)
         
         return render_template('dashboard.html',
-                            items=[item.to_dict() for item in items],
+                            items=all_items_dict,
                             expiring_items=expiring_items,
                             expired_items=expired_items,
+                            active_items=active_items,
+                            total_active_value=total_active_value,
+                            total_expiring_value=total_expiring_value,
+                            total_expired_value=total_expired_value,
+                            total_value=total_value,
                             notifications=notifications)
         
     except Exception as e:
@@ -93,21 +106,12 @@ def inventory():
             flash('Zoho sync is not available. Please connect in Settings to sync your inventory.', 'info')
         
         # Get user's items after potential updates
-        items = Item.query.filter_by(user_id=current_user.id).all()
-        current_app.logger.info(f"Found {len(items)} items for user {current_user.id}")
-        
-        # Update item statuses with force_update to ensure consistency
-        for item in items:
-            current_app.logger.info(f"Updating status for item {item.id} ({item.name})")
-            item.update_status(force_update=True)
-            current_app.logger.info(f"Item {item.id} ({item.name}) current status: {item.status}")
+        # Build query
+        query = Item.query.filter_by(user_id=current_user.id)
         
         # Get filter parameters
         status = request.args.get('status')
         search = request.args.get('search', '').strip()
-        
-        # Build query
-        query = Item.query.filter_by(user_id=current_user.id)
         
         # Apply status filter
         if status:
@@ -123,15 +127,18 @@ def inventory():
         # Apply search filter
         if search:
             search_term = f"%{search}%"
-            query = query.filter(
-                db.or_(
-                    Item.name.ilike(search_term),
-                    Item.description.ilike(search_term),
-                    Item.unit.ilike(search_term)
-                )
-            )
+            query = query.filter(Item.name.ilike(search_term))
+        
+        # Apply sorting by expiry date
+        query = query.order_by(Item.expiry_date.asc().nullslast())
         
         items = query.all()
+        
+        # Update item statuses with force_update to ensure consistency
+        for item in items:
+            current_app.logger.info(f"Updating status for item {item.id} ({item.name})")
+            item.update_status(force_update=True)
+            current_app.logger.info(f"Item {item.id} ({item.name}) current status: {item.status}")
         
         return render_template('inventory.html',
                             items=items,

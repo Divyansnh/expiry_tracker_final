@@ -11,33 +11,67 @@
     </div>
 
     <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900">Total Items</h3>
             <p class="text-3xl font-bold text-blue-600">{{ items|length }}</p>
+            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_value) }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900">Active Items</h3>
+            <p class="text-3xl font-bold text-green-600">{{ active_items|length }}</p>
+            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_active_value) }}</p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900">Expiring Soon</h3>
             <p class="text-3xl font-bold text-yellow-600">{{ expiring_items|length }}</p>
+            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_expiring_value) }}</p>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900">Expired Items</h3>
             <p class="text-3xl font-bold text-red-600">{{ expired_items|length }}</p>
+            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_expired_value) }}</p>
         </div>
     </div>
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Expiring Items by Category</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">High Value Products</h3>
             <div style="height: 200px;">
-                <canvas id="categoryDistributionChart"></canvas>
+                <canvas id="highValueChart"></canvas>
             </div>
         </div>
         <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Upcoming Expirations (Next 60 Days)</h3>
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Low Value Products</h3>
+            <div style="height: 200px;">
+                <canvas id="lowValueChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upcoming Expirations Chart -->
+    <div class="grid grid-cols-1 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Upcoming Expirations</h3>
             <div style="height: 200px;">
                 <canvas id="expiryTimelineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Value at Risk and Stock Value Distribution Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Value at Risk Analysis</h3>
+            <div style="height: 300px;">
+                <canvas id="valueAtRiskChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Stock Value Distribution</h3>
+            <div style="height: 300px;">
+                <canvas id="stockValueDistributionChart"></canvas>
             </div>
         </div>
     </div>
@@ -116,39 +150,37 @@
 <!-- Chart Initialization -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Category Distribution Chart
-    const categoryCtx = document.getElementById('categoryDistributionChart').getContext('2d');
+    // Get items data first
+    const items = JSON.parse('{{ items|tojson|safe }}');
+    const expiringItems = JSON.parse('{{ expiring_items|tojson|safe }}');
+
+    // High Value Products Chart
+    const highValueCtx = document.getElementById('highValueChart').getContext('2d');
     
-    // Group expiring items by category
-    const categoryData = {};
-    const categoryItems = {};
-    const expiringItemsData = JSON.parse('{{ expiring_items|tojson|safe }}');
-    expiringItemsData.forEach(item => {
-        const category = item.category || 'Uncategorized';
-        categoryData[category] = (categoryData[category] || 0) + 1;
-        if (!categoryItems[category]) {
-            categoryItems[category] = [];
-        }
-        categoryItems[category].push({
+    // Filter and sort high value items (> £100)
+    const highValueItems = items
+        .filter(item => {
+            const value = (item.quantity || 0) * (item.cost_price || 0);
+            return value > 100;
+        })
+        .map(item => ({
             name: item.name,
-            daysUntilExpiry: item.days_until_expiry
-        });
-    });
+            value: (item.quantity || 0) * (item.cost_price || 0),
+            quantity: item.quantity,
+            costPrice: item.cost_price
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5); // Show top 5 high value items
 
-    // Sort categories by count
-    const sortedCategories = Object.entries(categoryData)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5); // Show top 5 categories
-
-    new Chart(categoryCtx, {
+    new Chart(highValueCtx, {
         type: 'bar',
         data: {
-            labels: sortedCategories.map(cat => cat[0]),
+            labels: highValueItems.map(item => item.name),
             datasets: [{
-                label: 'Number of Items',
-                data: sortedCategories.map(cat => cat[1]),
-                backgroundColor: 'rgba(255, 193, 7, 0.8)',
-                borderColor: 'rgba(255, 193, 7, 1)',
+                label: 'Total Value (£)',
+                data: highValueItems.map(item => item.value),
+                backgroundColor: 'rgba(75, 192, 192, 0.8)',
+                borderColor: 'rgb(75, 192, 192)',
                 borderWidth: 1
             }]
         },
@@ -162,22 +194,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 tooltip: {
                     callbacks: {
                         title: function(context) {
-                            return `${context[0].label} (${context[0].raw} items)`;
+                            return context[0].label;
                         },
                         label: function(context) {
-                            const category = context.label;
-                            const items = categoryItems[category];
-                            if (!items) return [];
-                            
-                            // Sort items by days until expiry
-                            const sortedItems = items.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
-                            
+                            const item = highValueItems[context.dataIndex];
                             return [
-                                'Items expiring soonest:',
-                                ...sortedItems.slice(0, 3).map(item => 
-                                    `${item.name} - ${item.daysUntilExpiry} days`
-                                ),
-                                sortedItems.length > 3 ? `...and ${sortedItems.length - 3} more` : ''
+                                `Total Value: £${item.value.toFixed(2)}`,
+                                `Quantity: ${item.quantity} units`,
+                                `Cost Price: £${item.costPrice.toFixed(2)} per unit`
                             ];
                         }
                     }
@@ -186,12 +210,90 @@ document.addEventListener('DOMContentLoaded', function() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    },
                     title: {
                         display: true,
-                        text: 'Number of Items'
+                        text: 'Value (£)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '£' + value;
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Low Value Products Chart
+    const lowValueCtx = document.getElementById('lowValueChart').getContext('2d');
+    
+    // Filter and sort low value items (≤ £100)
+    const lowValueItems = items
+        .filter(item => {
+            const value = (item.quantity || 0) * (item.cost_price || 0);
+            return value <= 100 && value > 0; // Exclude items with zero value
+        })
+        .map(item => ({
+            name: item.name,
+            value: (item.quantity || 0) * (item.cost_price || 0),
+            quantity: item.quantity,
+            costPrice: item.cost_price
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5); // Show top 5 low value items
+
+    new Chart(lowValueCtx, {
+        type: 'bar',
+        data: {
+            labels: lowValueItems.map(item => item.name),
+            datasets: [{
+                label: 'Total Value (£)',
+                data: lowValueItems.map(item => item.value),
+                backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                borderColor: 'rgb(255, 193, 7)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return context[0].label;
+                        },
+                        label: function(context) {
+                            const item = lowValueItems[context.dataIndex];
+                            return [
+                                `Total Value: £${item.value.toFixed(2)}`,
+                                `Quantity: ${item.quantity} units`,
+                                `Cost Price: £${item.costPrice.toFixed(2)} per unit`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Value (£)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '£' + value;
+                        }
                     }
                 },
                 x: {
@@ -223,7 +325,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Prepare data for the chart
-    const expiringItems = JSON.parse('{{ expiring_items|tojson|safe }}');
     const expiryData = next60Days.map(date => {
         const dateStr = date.toISOString().split('T')[0];
         const items = expiringItems.filter(item => {
@@ -297,6 +398,252 @@ document.addEventListener('DOMContentLoaded', function() {
                     ticks: {
                         maxRotation: 45,
                         minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Value at Risk Chart
+    const valueAtRiskCtx = document.getElementById('valueAtRiskChart').getContext('2d');
+    
+    // Calculate value at risk for different timeframes
+    const valueAtRisk = {
+        'Next 7 Days': 0
+    };
+    
+    // Store items at risk for tooltip
+    const itemsAtRisk = [];
+    
+    items.forEach(item => {
+        const daysUntilExpiry = item.days_until_expiry;
+        const value = (item.quantity || 0) * (item.cost_price || 0);
+        
+        // Value at Risk calculation
+        if (daysUntilExpiry <= 7) {
+            valueAtRisk['Next 7 Days'] += value;
+            itemsAtRisk.push({
+                name: item.name,
+                value: value,
+                quantity: item.quantity,
+                daysUntilExpiry: daysUntilExpiry
+            });
+        }
+    });
+
+    // Sort items by value (highest first)
+    itemsAtRisk.sort((a, b) => b.value - a.value);
+
+    // Value at Risk Chart
+    new Chart(valueAtRiskCtx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(valueAtRisk),
+            datasets: [{
+                label: 'Value at Risk (£)',
+                data: Object.values(valueAtRisk),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)'   // Red for immediate risk
+                ],
+                borderColor: [
+                    'rgb(255, 99, 132)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return 'Items at Risk (Next 7 Days)';
+                        },
+                        label: function(context) {
+                            const totalValue = context.raw;
+                            let tooltipLines = [`Total Value: £${totalValue.toFixed(2)}`];
+                            
+                            // Add individual items
+                            tooltipLines.push('\nItems:');
+                            itemsAtRisk.forEach(item => {
+                                tooltipLines.push(
+                                    `• ${item.name}: £${item.value.toFixed(2)} (${item.quantity} units, ${item.daysUntilExpiry} days)`
+                                );
+                            });
+                            
+                            return tooltipLines;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Value (£)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return '£' + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Stock Value Distribution Chart
+    const stockValueCtx = document.getElementById('stockValueDistributionChart').getContext('2d');
+    
+    // Calculate total value by status
+    const stockValueData = {
+        'Active': 0,
+        'Expiring Soon': 0,
+        'Expired': 0
+    };
+    
+    // Store items by status for tooltip
+    const itemsByStatus = {
+        'Active': [],
+        'Expiring Soon': [],
+        'Expired': []
+    };
+    
+    items.forEach(item => {
+        // Only include items that have a status
+        if (item.status) {
+            console.log('Item:', item.name, 'Status:', item.status); // Debug log
+            const value = (item.quantity || 0) * (item.cost_price || 0);
+            let status;
+            
+            // Map the status to display name
+            switch(item.status) {
+                case 'active':
+                    status = 'Active';
+                    break;
+                case 'expiring_soon':
+                    status = 'Expiring Soon';
+                    break;
+                case 'expired':
+                    status = 'Expired';
+                    break;
+                default:
+                    console.log('Unknown status:', item.status); // Debug log
+                    return; // Skip items with unknown status
+            }
+            
+            console.log('Mapped status:', status); // Debug log
+            stockValueData[status] += value;
+            itemsByStatus[status].push({
+                name: item.name,
+                value: value,
+                quantity: item.quantity,
+                daysUntilExpiry: item.days_until_expiry
+            });
+        } else {
+            console.log('Item without status:', item.name); // Debug log
+        }
+    });
+
+    console.log('Final stockValueData:', stockValueData); // Debug log
+
+    // Remove empty categories
+    Object.keys(stockValueData).forEach(status => {
+        if (stockValueData[status] === 0) {
+            delete stockValueData[status];
+            delete itemsByStatus[status];
+        }
+    });
+
+    // At this point, stockValueData only contains categories that have items
+    // For example:
+    // - If no expired items: 'Expired' category will be removed
+    // - If no expiring soon items: 'Expiring Soon' category will be removed
+    // - If no active items: 'Active' category will be removed
+    // The chart will only show categories that have a value > 0
+
+    // Sort items by value within each status
+    Object.keys(itemsByStatus).forEach(status => {
+        itemsByStatus[status].sort((a, b) => b.value - a.value);
+    });
+
+    // Calculate percentages
+    const totalValue = Object.values(stockValueData).reduce((a, b) => a + b, 0);
+    const percentages = {};
+    Object.keys(stockValueData).forEach(status => {
+        percentages[status] = ((stockValueData[status] / totalValue) * 100).toFixed(1);
+    });
+
+    // Stock Value Distribution Chart
+    new Chart(stockValueCtx, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(stockValueData),
+            datasets: [{
+                data: Object.values(stockValueData),
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.8)',  // Green for Active
+                    'rgba(255, 193, 7, 0.8)',   // Yellow for Expiring Soon
+                    'rgba(255, 99, 132, 0.8)'   // Red for Expired
+                ],
+                borderColor: [
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 193, 7)',
+                    'rgb(255, 99, 132)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            return data.labels.map((label, i) => ({
+                                text: `${label} (${percentages[label]}%)`,
+                                fillStyle: data.datasets[0].backgroundColor[i],
+                                strokeStyle: data.datasets[0].borderColor[i],
+                                lineWidth: 1,
+                                hidden: isNaN(data.datasets[0].data[i]),
+                                index: i
+                            }));
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            const status = context[0].label;
+                            return `${status} (${percentages[status]}%)`;
+                        },
+                        label: function(context) {
+                            const status = context.label;
+                            const totalValue = context.raw;
+                            let tooltipLines = [`Total Value: £${totalValue.toFixed(2)}`];
+                            
+                            // Add individual items
+                            tooltipLines.push('\nTop Items:');
+                            itemsByStatus[status].slice(0, 3).forEach(item => {
+                                tooltipLines.push(
+                                    `• ${item.name}: £${item.value.toFixed(2)} (${item.quantity} units)`
+                                );
+                            });
+                            
+                            if (itemsByStatus[status].length > 3) {
+                                tooltipLines.push(`...and ${itemsByStatus[status].length - 3} more items`);
+                            }
+                            
+                            return tooltipLines;
+                        }
                     }
                 }
             }

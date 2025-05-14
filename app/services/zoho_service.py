@@ -177,14 +177,19 @@ class ZohoService:
                 
                 # Get all local items for this user
                 local_items = {item.name.lower(): item for item in Item.query.filter_by(user_id=user.id).all()}
+                local_items_by_zoho_id = {item.zoho_item_id: item for item in Item.query.filter_by(user_id=user.id).all() if item.zoho_item_id}
                 
                 synced_count = 0
                 for zoho_item in items:
                     item_name = zoho_item['name']
                     current_app.logger.info(f"Processing item: {item_name}")
                     
-                    # Check if item exists locally
-                    local_item = local_items.get(item_name.lower())
+                    # First check if item exists by Zoho ID
+                    local_item = local_items_by_zoho_id.get(zoho_item['item_id'])
+                    
+                    # If not found by Zoho ID, check by name
+                    if not local_item:
+                        local_item = local_items.get(item_name.lower())
                     
                     if local_item:
                         # Only update Zoho-specific fields, preserve local changes
