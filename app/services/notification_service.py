@@ -210,22 +210,27 @@ class NotificationService:
             db.session.rollback()
             return None
     
-    def get_user_notifications(self, user_id: int, limit: int = 10) -> List[Notification]:
+    def get_user_notifications(self, user_id: int, limit: int = 10, show_sent: bool = False) -> List[Notification]:
         """Get notifications for a specific user.
         
         Args:
             user_id: The ID of the user to get notifications for
             limit: Maximum number of notifications to return
+            show_sent: Whether to include sent notifications
             
         Returns:
             List of Notification objects
         """
         try:
-            notifications = Notification.query.filter_by(
+            query = Notification.query.filter_by(
                 user_id=user_id,
-                type='email',
-                status='pending'  # Only get pending notifications
-            ).order_by(
+                type='email'
+            )
+            
+            if not show_sent:
+                query = query.filter_by(status='pending')
+                
+            notifications = query.order_by(
                 Notification.created_at.desc()
             ).limit(limit).all()
             

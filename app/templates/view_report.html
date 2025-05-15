@@ -14,53 +14,408 @@
     </div>
 
     {% if report.report_data %}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-700 mb-2">Total Items</h3>
-            <p class="text-3xl font-bold text-blue-600">
-                {% if report.report_data.get('summary') %}
-                    {{ report.report_data.get('summary', {}).get('total_items', 0) }}
-                {% else %}
-                    {{ report.report_data.get('items_by_status', {}).get('active', 0) }}
+    <!-- Summary Metrics Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Summary Metrics</h2>
+        <p class="text-gray-600 mb-4">These metrics provide a quick overview of your inventory status. They are calculated based on current stock levels and expiry dates.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Total Items</h3>
+                <p class="text-3xl font-bold text-blue-600">
+                    {% if report.report_data.get('summary') %}
+                        {{ report.report_data.get('summary', {}).get('total_items', 0) }}
+                    {% else %}
+                        {{ report.report_data.get('items_by_status', {}).get('active', 0) }}
+                    {% endif %}
+                </p>
+                <p class="text-sm text-gray-500 mt-2">Total number of unique items in your inventory. This includes all active items regardless of their status.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Active Items</h3>
+                <p class="text-3xl font-bold text-green-600">
+                    {{ report.report_data.get('summary', {}).get('active_items', 0) }}
+                </p>
+                <p class="text-sm text-gray-500 mt-2">Items currently in stock and not expired.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Expired Items</h3>
+                <p class="text-3xl font-bold text-gray-600">
+                    {{ report.report_data.get('summary', {}).get('expired_items', 0) }}
+                </p>
+                <p class="text-sm text-gray-500 mt-2">Items that have passed their expiry date.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Expiring Items</h3>
+                <div class="flex items-baseline">
+                    <p class="text-3xl font-bold text-yellow-600">
+                        {% if report.report_data.get('summary') %}
+                            {{ report.report_data.get('summary', {}).get('expiring_items', 0) }}
+                        {% else %}
+                            {{ report.report_data.get('items_by_status', {}).get('expiring_soon', 0) }}
+                        {% endif %}
+                    </p>
+                    {% if report.report_data.get('summary', {}).get('trends', {}).get('expiring_items_change') is not none %}
+                        {% set change = report.report_data.get('summary', {}).get('trends', {}).get('expiring_items_change') %}
+                        <span class="ml-2 text-sm {% if change > 0 %}text-red-500{% elif change < 0 %}text-green-500{% else %}text-gray-500{% endif %}">
+                            {% if change > 0 %}↑{% elif change < 0 %}↓{% else %}→{% endif %}
+                            {{ change|abs }}
+                        </span>
+                    {% endif %}
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Items expiring within the next 7 days.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Critical Items</h3>
+                <div class="flex items-baseline">
+                    <p class="text-3xl font-bold text-red-600">
+                        {% if report.report_data.get('summary') %}
+                            {{ report.report_data.get('summary', {}).get('critical_items', 0) }}
+                        {% else %}
+                            {{ report.report_data.get('items_by_status', {}).get('expired', 0) }}
+                        {% endif %}
+                    </p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Items that are both expiring soon (≤7 days) and have high quantity (>10 units). These require immediate attention.</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Low Stock Items</h3>
+                <div class="flex items-baseline">
+                    <p class="text-3xl font-bold text-orange-600">
+                        {% if report.report_data.get('summary') %}
+                            {{ report.report_data.get('summary', {}).get('low_stock_items', 0) }}
+                        {% else %}
+                            {{ report.report_data.get('items_by_status', {}).get('low_stock', 0) }}
+                        {% endif %}
+                    </p>
+                </div>
+                <p class="text-sm text-gray-500 mt-2">Items with quantity less than 10 units.</p>
+                {% if report.report_data.get('summary', {}).get('low_stock_items_list') %}
+                <div class="mt-2">
+                    <h4 class="text-xs font-semibold text-orange-700 mb-1">Low Stock Item Names:</h4>
+                    <ul class="list-disc list-inside text-xs text-gray-700">
+                        {% for item in report.report_data.get('summary', {}).get('low_stock_items_list', []) %}
+                        <li>{{ item.name }} ({{ item.quantity }} {{ item.unit }})</li>
+                        {% endfor %}
+                    </ul>
+                </div>
                 {% endif %}
-            </p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-700 mb-2">Expiring Items</h3>
-            <p class="text-3xl font-bold text-yellow-600">
-                {% if report.report_data.get('summary') %}
-                    {{ report.report_data.get('summary', {}).get('expiring_items', 0) }}
-                {% else %}
-                    {{ report.report_data.get('items_by_status', {}).get('expiring_soon', 0) }}
-                {% endif %}
-            </p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-700 mb-2">Critical Items</h3>
-            <p class="text-3xl font-bold text-red-600">
-                {% if report.report_data.get('summary') %}
-                    {{ report.report_data.get('summary', {}).get('critical_items', 0) }}
-                {% else %}
-                    {{ report.report_data.get('items_by_status', {}).get('expired', 0) }}
-                {% endif %}
-            </p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-700 mb-2">Low Stock Items</h3>
-            <p class="text-3xl font-bold text-orange-600">
-                {% if report.report_data.get('summary') %}
-                    {{ report.report_data.get('summary', {}).get('low_stock_items', 0) }}
-                {% else %}
-                    {{ report.report_data.get('items_by_status', {}).get('low_stock', 0) }}
-                {% endif %}
-            </p>
+            </div>
         </div>
     </div>
+
+    <!-- Inventory Health Metrics -->
+    {% if report.report_data.get('summary', {}).get('inventory_metrics') %}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Inventory Health Metrics</h2>
+        <p class="text-gray-600 mb-4">These metrics help you understand the overall health of your inventory. They are calculated using industry-standard formulas and provide insights into your inventory management efficiency.</p>
+        
+        <!-- Key Performance Indicators -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500">Stock Coverage</h3>
+                <p class="mt-2 text-2xl font-semibold text-gray-900">
+                    {{ "%.1f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('inventory_health', {}).get('stock_coverage', 0)) }}%
+                </p>
+                <p class="mt-1 text-sm text-gray-500">Items with adequate stock</p>
+                <div class="mt-2 text-xs text-gray-500">
+                    <p><strong>Calculation:</strong> (Items with quantity ≥ 10) / Total Items × 100</p>
+                    <p><strong>Importance:</strong> Indicates how well you're maintaining stock levels</p>
+                    <p><strong>Limitation:</strong> Doesn't consider optimal stock levels for different items</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500">Expiry Ratio</h3>
+                <p class="mt-2 text-2xl font-semibold text-gray-900">
+                    {{ "%.1f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('inventory_health', {}).get('expiry_ratio', 0)) }}%
+                </p>
+                <p class="mt-1 text-sm text-gray-500">Items expiring soon</p>
+                <div class="mt-2 text-xs text-gray-500">
+                    <p><strong>Calculation:</strong> (Items expiring in 7 days) / Total Items × 100</p>
+                    <p><strong>Importance:</strong> Shows the proportion of inventory at risk of expiry</p>
+                    <p><strong>Limitation:</strong> Doesn't consider item values or quantities</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500">Value at Risk</h3>
+                <p class="mt-2 text-2xl font-semibold text-gray-900">
+                    {{ "%.1f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('inventory_health', {}).get('value_at_risk', 0)) }}%
+                </p>
+                <p class="mt-1 text-sm text-gray-500">Inventory value at risk</p>
+                <div class="mt-2 text-xs text-gray-500">
+                    <p><strong>Calculation:</strong> (Value of items expiring in 7 days) / Total Value × 100</p>
+                    <p><strong>Importance:</strong> Shows the financial impact of expiring items</p>
+                    <p><strong>Limitation:</strong> Based on cost price, not potential sales value</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-sm font-medium text-gray-500">Stock Turnover</h3>
+                <p class="mt-2 text-2xl font-semibold text-gray-900">
+                    £{{ "%.2f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('stock_turnover', 0)) }}
+                </p>
+                <p class="mt-1 text-sm text-gray-500">Average value per item</p>
+                <div class="mt-2 text-xs text-gray-500">
+                    <p><strong>Calculation:</strong> Total Inventory Value / Total Items</p>
+                    <p><strong>Importance:</strong> Indicates the average investment per item</p>
+                    <p><strong>Limitation:</strong> Doesn't reflect actual turnover rate without sales data</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Value at Risk Analysis -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Value at Risk Analysis</h3>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Immediate Risk -->
+                <div class="bg-red-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-red-800 mb-2">Immediate Risk (7 days)</h4>
+                    <p class="text-2xl font-bold text-red-600">{{ report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('immediate_risk', {}).get('count', 0) }}</p>
+                    <p class="text-sm text-red-600">{{ "%.1f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('immediate_risk', {}).get('percentage', 0)) }}% of total value</p>
+                    <p class="text-sm text-gray-600 mt-2">Items requiring immediate attention</p>
+                    {% if report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('immediate_risk', {}).get('items') %}
+                    <div class="mt-4">
+                        <h5 class="font-medium text-red-800 mb-2">Items at risk:</h5>
+                        <ul class="text-sm">
+                        {% for item in report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('immediate_risk', {}).get('items', []) %}
+                            <li class="text-gray-700">
+                                {{ item.name }} - £{{ "%.2f"|format(item.value) }}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Short-term Risk -->
+                <div class="bg-orange-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-orange-800 mb-2">Short-term Risk (30 days)</h4>
+                    <p class="text-2xl font-bold text-orange-600">{{ report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('short_term_risk', {}).get('count', 0) }}</p>
+                    <p class="text-sm text-orange-600">{{ "%.1f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('short_term_risk', {}).get('percentage', 0)) }}% of total value</p>
+                    <p class="text-sm text-gray-600 mt-2">Items requiring attention this month</p>
+                    {% if report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('short_term_risk', {}).get('items') %}
+                    <div class="mt-4">
+                        <h5 class="font-medium text-orange-800 mb-2">Items at risk:</h5>
+                        <ul class="text-sm">
+                        {% for item in report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('short_term_risk', {}).get('items', []) %}
+                            <li class="text-gray-700">
+                                {{ item.name }} - £{{ "%.2f"|format(item.value) }}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Medium-term Risk -->
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-yellow-800 mb-2">Medium-term Risk (90 days)</h4>
+                    <p class="text-2xl font-bold text-yellow-600">{{ report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('medium_term_risk', {}).get('count', 0) }}</p>
+                    <p class="text-sm text-yellow-600">{{ "%.1f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('medium_term_risk', {}).get('percentage', 0)) }}% of total value</p>
+                    <p class="text-sm text-gray-600 mt-2">Items to monitor in next quarter</p>
+                    {% if report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('medium_term_risk', {}).get('items') %}
+                    <div class="mt-4">
+                        <h5 class="font-medium text-yellow-800 mb-2">Items at risk:</h5>
+                        <ul class="text-sm">
+                        {% for item in report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('medium_term_risk', {}).get('items', []) %}
+                            <li class="text-gray-700">
+                                {{ item.name }} - £{{ "%.2f"|format(item.value) }}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                            {% endif %}
+                </div>
+                
+                <!-- High Quantity Risk -->
+                <div class="bg-purple-50 p-4 rounded-lg">
+                    <h4 class="font-medium text-purple-800 mb-2">High Quantity Risk</h4>
+                    <p class="text-2xl font-bold text-purple-600">{{ report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('high_quantity_risk', {}).get('count', 0) }}</p>
+                    <p class="text-sm text-purple-600">{{ "%.1f"|format(report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('high_quantity_risk', {}).get('percentage', 0)) }}% of total value</p>
+                    <p class="text-sm text-gray-600 mt-2">Large quantities at risk</p>
+                    {% if report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('high_quantity_risk', {}).get('items') %}
+                    <div class="mt-4">
+                        <h5 class="font-medium text-purple-800 mb-2">Items at risk:</h5>
+                        <ul class="text-sm">
+                        {% for item in report.report_data.get('summary', {}).get('inventory_metrics', {}).get('value_at_risk_analysis', {}).get('high_quantity_risk', {}).get('items', []) %}
+                            <li class="text-gray-700">
+                                {{ item.name }} - £{{ "%.2f"|format(item.value) }}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mt-4 text-sm text-gray-600">
+                <p><strong>Note:</strong> This analysis focuses on inventory value at risk of expiry in different timeframes.</p>
+                <ul class="list-disc list-inside mt-2">
+                    <li>Immediate Risk: Items expiring within 7 days</li>
+                    <li>Short-term Risk: Items expiring within 30 days</li>
+                    <li>Medium-term Risk: Items expiring within 90 days</li>
+                    <li>High Quantity Risk: Items with large quantities (>100) expiring within 30 days</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Risk Analysis -->
+    {% if report.report_data.get('risk_analysis') %}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Risk Analysis</h2>
+        <p class="text-gray-600 mb-4">Risk analysis helps identify items that need immediate attention. The risk score (0-100) is calculated based on multiple factors including expiry date, quantity, and value. Higher scores indicate higher risk.</p>
+        
+        <!-- High Risk Items -->
+        {% if report.report_data.get('risk_analysis', {}).get('high_risk_items') %}
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-red-600 mb-4">High Risk Items (Risk Score ≥ 70)</h3>
+            <p class="text-sm text-gray-600 mb-4">These items have a high risk score due to one or more of the following factors:</p>
+            <ul class="list-disc list-inside text-sm text-gray-600 mb-4">
+                <li>Expiring within 7 days (40% of risk score)</li>
+                <li>Quantity below safety stock (30% of risk score)</li>
+                <li>High value items (30% of risk score)</li>
+                <li>Additional factors: Critical items (+10 points), Temperature-sensitive items (+10 points)</li>
+            </ul>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Score</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in report.report_data.get('risk_analysis', {}).get('high_risk_items', []) %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ item.get('days_until_expiry', 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                    {% if item.get('risk_score', 0) >= 90 %}bg-red-100 text-red-800
+                                    {% elif item.get('risk_score', 0) >= 70 %}bg-orange-100 text-orange-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {{ item.get('risk_score', 0) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Critical Items -->
+        {% if report.report_data.get('risk_analysis', {}).get('critical_items') %}
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-red-600 mb-4">Critical Items</h3>
+            <p class="text-sm text-gray-600 mb-4">Items that are both expiring soon (≤7 days) and have high quantity (>10 units). These items require immediate attention to prevent significant losses.</p>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Score</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in report.report_data.get('risk_analysis', {}).get('critical_items', []) %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ item.get('days_until_expiry', 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                    {% if item.get('risk_score', 0) >= 90 %}bg-red-100 text-red-800
+                                    {% elif item.get('risk_score', 0) >= 70 %}bg-orange-100 text-orange-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {{ item.get('risk_score', 0) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- High Value Expiring Items -->
+        {% if report.report_data.get('risk_analysis', {}).get('high_value_expiring') %}
+        <div class="mb-8">
+            <h3 class="text-lg font-semibold text-orange-600 mb-4">High Value Expiring Items</h3>
+            <p class="text-sm text-gray-600 mb-4">Items with high value (>£1000) that are expiring within 7 days. These items represent significant financial risk if not managed properly.</p>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Risk Score</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for item in report.report_data.get('risk_analysis', {}).get('high_value_expiring', []) %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{{ item.get('days_until_expiry', 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                    {% if item.get('risk_score', 0) >= 90 %}bg-red-100 text-red-800
+                                    {% elif item.get('risk_score', 0) >= 70 %}bg-orange-100 text-orange-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {{ item.get('risk_score', 0) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
 
     <!-- Action Recommendations -->
     {% if report.report_data.get('action_recommendations') %}
     <div class="bg-white rounded-lg shadow p-6 mb-8">
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Action Recommendations</h2>
+        <p class="text-gray-600 mb-4">Based on the analysis of your inventory, here are recommended actions to improve your inventory management. These recommendations are prioritized by urgency and potential impact.</p>
         <div class="space-y-4">
             {% for recommendation in report.report_data.get('action_recommendations', []) %}
             <div class="p-4 rounded-lg {% if recommendation.get('type') == 'urgent' %}bg-red-50{% elif recommendation.get('type') == 'high_priority' %}bg-yellow-50{% else %}bg-blue-50{% endif %}">
@@ -212,83 +567,6 @@
                 </div>
             </div>
             {% endif %}
-        {% endif %}
-    </div>
-    {% endif %}
-
-    <!-- Risk Analysis -->
-    {% if report.report_data.get('risk_analysis') %}
-    <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Risk Analysis</h2>
-        
-        <!-- Critical Items -->
-        {% if report.report_data.get('risk_analysis', {}).get('critical_items') %}
-        <div class="mb-8">
-            <h3 class="text-lg font-semibold text-red-600 mb-4">Critical Items</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for item in report.report_data.get('risk_analysis', {}).get('critical_items', []) %}
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">{{ item.get('days_until_expiry', 0) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- High Value Expiring Items -->
-        {% if report.report_data.get('risk_analysis', {}).get('high_value_expiring') %}
-        <div class="mb-8">
-            <h3 class="text-lg font-semibold text-orange-600 mb-4">High Value Expiring Items</h3>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Until Expiry</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Number</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        {% for item in report.report_data.get('risk_analysis', {}).get('high_value_expiring', []) %}
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('name', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('quantity', 0) }} {{ item.get('unit', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('expiry_date', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-orange-600">{{ item.get('days_until_expiry', 0) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{{ "%.2f"|format(item.get('value', 0)) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('location', '') }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.get('batch_number', '') }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
         {% endif %}
     </div>
     {% endif %}

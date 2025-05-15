@@ -148,7 +148,9 @@ def inventory():
                             STATUS_EXPIRED=STATUS_EXPIRED,
                             STATUS_EXPIRING_SOON=STATUS_EXPIRING_SOON,
                             STATUS_PENDING=STATUS_PENDING,
-                            today_date=datetime.now().date().strftime('%Y-%m-%d'))
+                            today_date=datetime.now().date().strftime('%Y-%m-%d'),
+                            now=datetime.now(),
+                            timedelta=timedelta)
         
     except Exception as e:
         current_app.logger.error(f"Inventory error: {str(e)}")
@@ -160,8 +162,9 @@ def inventory():
 def notifications():
     """Notifications page."""
     notification_service = NotificationService()
-    notifications = notification_service.get_user_notifications(current_user.id)
-    return render_template('notifications.html', notifications=notifications)
+    show_sent = request.args.get('show_sent', 'false').lower() == 'true'
+    notifications = notification_service.get_user_notifications(current_user.id, show_sent=show_sent)
+    return render_template('notifications.html', notifications=notifications, show_sent=show_sent)
 
 @main_bp.route('/notifications/<int:notification_id>/read', methods=['POST'])
 @login_required

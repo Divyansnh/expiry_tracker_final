@@ -326,13 +326,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Prepare data for the chart
     const expiryData = next60Days.map(date => {
-        const dateStr = date.toISOString().split('T')[0];
-        const items = expiringItems.filter(item => {
-            // Parse the ISO date string
-            const itemDate = new Date(item.expiry_date);
-            const itemDateStr = itemDate.toISOString().split('T')[0];
-            return itemDateStr === dateStr;
-        });
+        const daysFromToday = Math.floor((date - new Date()) / (1000 * 60 * 60 * 24));
+        const items = expiringItems.filter(item => item.days_until_expiry === daysFromToday);
+        
         return {
             count: items.length,
             items: items.map(item => ({

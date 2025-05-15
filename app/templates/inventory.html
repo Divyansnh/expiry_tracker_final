@@ -291,6 +291,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <label for="expiry_date" class="block text-sm font-medium text-gray-700">Expiry Date *</label>
                     <div class="mt-1 flex space-x-2">
                         <input type="date" id="expiry_date" name="expiry_date" required
+                               max="{{ (now + timedelta(days=3650)).strftime('%Y-%m-%d') }}"
                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                         <div class="flex items-center space-x-2">
                             <button type="button" id="uploadBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
@@ -396,6 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <label for="editExpiryDate" class="block text-sm font-medium text-gray-700">Expiry Date</label>
                     <div class="mt-1 flex space-x-2">
                     <input type="date" name="expiry_date" id="editExpiryDate" required
+                               max="{{ (now + timedelta(days=3650)).strftime('%Y-%m-%d') }}"
                                class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                         <div class="flex items-center space-x-2">
                             <button type="button" id="editUploadBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
