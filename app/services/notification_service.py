@@ -36,18 +36,24 @@ class NotificationService:
                 self._notification_days = list(config_days)  # Ensure it's a list
         return self._notification_days
     
-    def check_expiry_dates(self) -> None:
+    def check_expiry_dates(self, user_id: Optional[int] = None) -> None:
         """Check all items for expiry dates and send email notifications."""
         try:
             current_app.logger.info("Starting expiry date check at %s", datetime.now())
             
             # Get all items with expiry dates that are not already expired
-            items = Item.query.filter(
+            query = Item.query.filter(
                 and_(
                     cast(BinaryExpression, Item.expiry_date.isnot(None)),
                     cast(BinaryExpression, Item.status != STATUS_EXPIRED)
                 )
-            ).all()
+            )
+            
+            # If user_id is provided, only get items for that user
+            if user_id is not None:
+                query = query.filter_by(user_id=user_id)
+            
+            items = query.all()
             
             current_app.logger.info("Found %d items to check for notifications", len(items))
             
@@ -65,11 +71,11 @@ class NotificationService:
                     user_items[item.user_id] = []
                 
                 # Set priority based on days until expiry
-                if days_until_expiry <= 3:
+                if days_until_expiry <= 1:  # Today or tomorrow
                     priority = 'high'
-                elif days_until_expiry <= 7:
+                elif 2 <= days_until_expiry <= 7:  # 2-7 days
                     priority = 'normal'
-                else:
+                else:  # 8+ days
                     priority = 'low'
                 
                 user_items[item.user_id].append({
@@ -124,7 +130,8 @@ class NotificationService:
                     cast(ColumnElement[bool], Notification.user_id == user.id),
                     cast(ColumnElement[bool], Notification.created_at >= today_start),
                     cast(ColumnElement[bool], Notification.type == 'email'),
-                    cast(ColumnElement[bool], Notification.status == 'sent')
+                    cast(ColumnElement[bool], Notification.status == 'sent'),
+                    cast(ColumnElement[bool], Notification.message.like('Daily status update sent for% items%'))
                 )
             ).first()
             
@@ -153,7 +160,7 @@ class NotificationService:
                 notification = self.create_notification(
                     user_id=user.id,
                     item_id=items[0]['id'],
-                    message=f"Daily status update sent for {len(items)} items",
+                    message=f"Daily status update sent for {len(items)} items to {user.email}",
                     type='email',
                     priority='normal',
                     status='pending'  # Create as pending so user can mark it as sent
@@ -224,11 +231,9 @@ class NotificationService:
         try:
             query = Notification.query.filter_by(
                 user_id=user_id,
-                type='email'
+                type='email',
+                status='sent' if show_sent else 'pending'
             )
-            
-            if not show_sent:
-                query = query.filter_by(status='pending')
                 
             notifications = query.order_by(
                 Notification.created_at.desc()

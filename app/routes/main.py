@@ -113,17 +113,6 @@ def inventory():
         status = request.args.get('status')
         search = request.args.get('search', '').strip()
         
-        # Apply status filter
-        if status:
-            if status == 'expiring_soon':
-                query = query.filter(Item.status == STATUS_EXPIRING_SOON)
-            elif status == 'expired':
-                query = query.filter(Item.status == STATUS_EXPIRED)
-            elif status == 'active':
-                query = query.filter(Item.status == STATUS_ACTIVE)
-            elif status == 'pending':
-                query = query.filter(Item.status == STATUS_PENDING)
-        
         # Apply search filter
         if search:
             search_term = f"%{search}%"
@@ -139,6 +128,10 @@ def inventory():
             current_app.logger.info(f"Updating status for item {item.id} ({item.name})")
             item.update_status(force_update=True)
             current_app.logger.info(f"Item {item.id} ({item.name}) current status: {item.status}")
+        
+        # Apply status filter after updating statuses
+        if status:
+            items = [item for item in items if item.status == status]
         
         return render_template('inventory.html',
                             items=items,
@@ -457,7 +450,20 @@ def update_item(item_id):
                     item.discounted_price = round(price, 2) if price > 0 else None
                 except (ValueError, TypeError):
                     item.discounted_price = None
-            
+        
+        # Validation: discounted price cannot be greater than selling price
+        if (
+            item.discounted_price is not None
+            and item.selling_price is not None
+            and item.discounted_price > item.selling_price
+        ):
+            error_msg = "Discounted price cannot be greater than selling price."
+            if request.is_json:
+                return jsonify({'success': False, 'error': error_msg}), 400
+            else:
+                flash(error_msg, 'error')
+                return redirect(url_for('main.inventory'))
+        
         item.unit = data.get('unit', item.unit)
         item.description = data.get('description', item.description)
         if 'expiry_date' in data:

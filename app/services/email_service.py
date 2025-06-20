@@ -187,9 +187,9 @@ class EmailService:
                 # Set priority based on days until expiry
                 if item['days_until_expiry'] <= 1:  # Today or tomorrow
                     priority = 'high'
-                elif item['days_until_expiry'] <= 7:  # Within 7 days
+                elif 2 <= item['days_until_expiry'] <= 7:  # 2-7 days
                     priority = 'normal'
-                else:  # More than 7 days
+                else:  # 8+ days
                     priority = 'low'
                 
                 items_needing_attention.append({

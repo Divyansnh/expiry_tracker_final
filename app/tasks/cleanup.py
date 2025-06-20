@@ -80,7 +80,7 @@ def cleanup_expired_items():
 def cleanup_unverified_accounts():
     """Cleanup unverified user accounts that are older than 1 hour."""
     try:
-        one_hour_ago = datetime.now() - timedelta(hours=1)
+        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
         
         # Find unverified accounts older than 1 hour
         unverified_users = User.query.filter_by(

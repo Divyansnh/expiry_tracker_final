@@ -276,8 +276,8 @@ class ReportService:
             current_app.logger.info(f"Inventory health - Coverage: {inventory_metrics['inventory_health']['stock_coverage']:.1f}%, Expiry: {inventory_metrics['inventory_health']['expiry_ratio']:.1f}%, Risk: {inventory_metrics['inventory_health']['value_at_risk']:.1f}%")
             
             # Calculate expiry risk metrics
-            critical_items = [item for item in items if item.days_until_expiry is not None and 0 < item.days_until_expiry <= 7 and (item.quantity or 0) > 10]
-            high_value_expiring = [item for item in items if item.days_until_expiry is not None and 0 < item.days_until_expiry <= 7 and (item.quantity or 0) * (item.cost_price or 0) > 1000]
+            critical_items = [item for item in items if item.days_until_expiry is not None and 0 <= item.days_until_expiry <= 7 and (item.quantity or 0) > 10]
+            high_value_expiring = [item for item in items if item.days_until_expiry is not None and 0 <= item.days_until_expiry <= 7 and (item.quantity or 0) * (item.cost_price or 0) > 1000]
             
             # Group items by expiry timeframes
             expiry_timeframes = {
