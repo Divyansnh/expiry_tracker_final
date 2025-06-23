@@ -3,102 +3,1680 @@
 {% block title %}Settings - Expiry Tracker{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-900 mb-8">Settings</h1>
-
-        <!-- Zoho Integration -->
-        <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Zoho Integration</h2>
-            {% if current_user.zoho_access_token %}
-                <div class="mb-4">
-                    <p class="text-green-600 font-medium">✓ Connected to Zoho</p>
-                    <p class="text-sm text-gray-600 mt-1">Your inventory will be synced when you visit the inventory page.</p>
-                </div>
-                <div class="flex space-x-4">
-                    <a href="{{ url_for('auth.zoho_logout') }}" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                        Disconnect from Zoho
-                    </a>
-                </div>
-            {% else %}
-                <!-- Zoho Developer Credentials Form -->
-                <form method="POST" action="{{ url_for('main.settings') }}" class="mb-6">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="mb-4">
-                        <label for="zoho_client_id" class="block text-sm font-medium text-gray-700">Zoho Client ID</label>
-                        <input type="text" name="zoho_client_id" id="zoho_client_id" 
-                               value="{{ current_user.zoho_client_id or '' }}"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <p class="mt-1 text-sm text-gray-500">Get this from your Zoho Developer Console</p>
+<!-- Modern Disconnect Zoho Confirmation Modal -->
+<div id="disconnectZohoConfirmationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-8 border-0 w-96 shadow-2xl rounded-2xl bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-red-100 to-red-200 rounded-2xl shadow-lg">
+                <i class="fas fa-unlink text-red-600 text-2xl"></i>
+            </div>
+            <div class="mt-6 text-center">
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Disconnect from Zoho</h3>
+                <div class="mt-4 px-4 py-4">
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        To disconnect from Zoho, you need to verify your identity with your account password.
+                    </p>
+                    <div class="mt-6 text-left bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200">
+                        <div class="text-sm text-gray-700">
+                            <p class="font-semibold text-gray-800 mb-3">What will happen:</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-times-circle text-red-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Your Zoho access token will be removed</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-pause-circle text-yellow-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Inventory sync will be disabled</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-refresh text-blue-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>You'll need to reconnect to resume syncing</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-shield-alt text-green-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Your credentials will remain stored securely</span>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
-                    
-                    <div class="mb-4">
-                        <label for="zoho_client_secret" class="block text-sm font-medium text-gray-700">Zoho Client Secret</label>
-                        <input type="password" name="zoho_client_secret" id="zoho_client_secret" 
-                               value="{{ current_user.zoho_client_secret or '' }}"
-                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        <p class="mt-1 text-sm text-gray-500">Get this from your Zoho Developer Console</p>
+                    <div class="mt-6">
+                        <label for="disconnectPassword" class="block text-sm font-semibold text-gray-700 text-left mb-2">Account Password</label>
+                        <input type="password" id="disconnectPassword" 
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 transition-all duration-200"
+                               placeholder="Enter your password">
                     </div>
-                    
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        Save Credentials
+                </div>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="confirmDisconnectZohoBtn" class="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-red-700 hover:to-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                        <i class="fas fa-unlink mr-2"></i>Verify & Disconnect
                     </button>
-                </form>
-                
-                <div class="mb-4">
-                    <p class="text-red-600">✗ Not connected to Zoho</p>
-                    <p class="text-sm text-gray-600 mt-1">Please enter your Zoho developer credentials above, then connect your account.</p>
-                </div>
-                
-                <a href="{{ url_for('auth.zoho_auth') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 inline-block">
-                    Connect to Zoho
-                </a>
-            {% endif %}
-        </div>
-
-        <!-- Notification Preferences -->
-        <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Notification Preferences</h2>
-            <form method="POST" action="{{ url_for('main.update_notification_settings') }}" class="space-y-4">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <label class="text-sm font-medium text-gray-700">Email Notifications</label>
-                        <p class="text-sm text-gray-500">Receive notifications via email</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="email_notifications" class="sr-only peer" 
-                               {% if current_user.email_notifications %}checked{% endif %}>
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                    </label>
-                </div>
-
-                <div class="pt-4">
-                    <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Save Changes
+                    <button onclick="hideDisconnectZohoConfirmationModal()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transform hover:scale-105 transition-all duration-200">
+                        Cancel
                     </button>
                 </div>
-            </form>
-        </div>
-
-        <!-- Account Settings -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Account Settings</h2>
-            <form method="POST" action="{{ url_for('main.settings') }}" class="space-y-4">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
-                    <input type="text" name="username" id="username" value="{{ current_user.username }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" readonly>
-                </div>
-
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                    <input type="email" name="email" id="email" value="{{ current_user.email }}"
-                           class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" readonly>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Modern Save Credentials Confirmation Modal -->
+<div id="saveCredentialsConfirmationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-8 border-0 w-96 shadow-2xl rounded-2xl bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl shadow-lg">
+                <i class="fas fa-shield-alt text-blue-600 text-2xl"></i>
+            </div>
+            <div class="mt-6 text-center">
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Save Zoho Credentials</h3>
+                <div class="mt-4 px-4 py-4">
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        Are you sure you want to save these Zoho credentials? They will be encrypted and stored securely.
+                    </p>
+                    <div class="mt-6 text-left bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                        <div class="text-sm text-gray-700">
+                            <p class="font-semibold text-blue-800 mb-3">Security Information:</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-lock text-blue-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Credentials will be encrypted using AES-256</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-user-shield text-green-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Only you can access them with your password</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-history text-purple-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Access is logged for security monitoring</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-database text-indigo-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Credentials are stored locally on your device</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="confirmSaveCredentialsBtn" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                        <i class="fas fa-shield-alt mr-2"></i>Save Securely
+                    </button>
+                    <button onclick="hideSaveCredentialsConfirmationModal()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transform hover:scale-105 transition-all duration-200">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Credential Access Confirmation Modal -->
+<div id="credentialAccessConfirmationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-8 border-0 w-96 shadow-2xl rounded-2xl bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl shadow-lg">
+                <i class="fas fa-eye text-purple-600 text-2xl"></i>
+            </div>
+            <div class="mt-6 text-center">
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Access Credentials</h3>
+                <div class="mt-4 px-4 py-4">
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        To view your credentials, you need to verify your identity with your account password and email verification code.
+                    </p>
+                    <div class="mt-6 text-left bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200">
+                        <div class="text-sm text-gray-700">
+                            <p class="font-semibold text-purple-800 mb-3">Security Notice:</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-key text-purple-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Your password is required for security</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-envelope text-blue-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Email verification code required</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-eye-slash text-pink-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Access will be logged and monitored</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-clock text-orange-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Session expires after 15 minutes</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-mask text-indigo-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Credentials auto-hide after 30 seconds</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Email Code Section -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-semibold text-gray-700 text-left mb-2">Email Verification Code</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="credentialEmailCode" 
+                                   class="flex-1 rounded-xl border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 transition-all duration-200"
+                                   placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}">
+                            <button id="sendEmailCodeBtn" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                                <i class="fas fa-paper-plane mr-1"></i>Send Code
+                            </button>
+                        </div>
+                        <div id="emailCodeStatus" class="mt-2 text-xs"></div>
+                    </div>
+                    
+                    <!-- Password Section -->
+                    <div class="mt-4">
+                        <label for="credentialPassword" class="block text-sm font-semibold text-gray-700 text-left mb-2">Account Password</label>
+                        <input type="password" id="credentialPassword" 
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 transition-all duration-200"
+                               placeholder="Enter your password">
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="confirmCredentialAccessBtn" class="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                        <i class="fas fa-eye mr-2"></i>Verify & Access
+                    </button>
+                    <button onclick="hideCredentialAccessConfirmationModal()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transform hover:scale-105 transition-all duration-200">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Success Notification -->
+<div id="successNotification" class="hidden fixed top-6 right-6 z-[9999]">
+    <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6 shadow-2xl backdrop-blur-sm">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fas fa-check text-white text-lg"></i>
+                </div>
+            </div>
+            <div class="ml-4 flex-1">
+                <h3 class="text-sm font-bold text-green-800">Success!</h3>
+                <div class="mt-2 text-sm text-green-700">
+                    <p id="successMessage">Operation completed successfully.</p>
+                </div>
+                <div class="mt-4">
+                    <button type="button" onclick="hideSuccessNotification()" class="bg-green-100 text-green-800 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Error Notification -->
+<div id="errorNotification" class="hidden fixed top-6 right-6 z-[9999]">
+    <div class="bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-2xl p-6 shadow-2xl backdrop-blur-sm">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-gradient-to-br from-red-400 to-pink-500 rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fas fa-exclamation-triangle text-white text-lg"></i>
+                </div>
+            </div>
+            <div class="ml-4 flex-1">
+                <h3 class="text-sm font-bold text-red-800">Error</h3>
+                <div class="mt-2 text-sm text-red-700">
+                    <p id="errorMessage">An error occurred. Please try again.</p>
+                </div>
+                <div class="mt-4">
+                    <button type="button" onclick="hideErrorNotification()" class="bg-red-100 text-red-800 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Warning Notification -->
+<div id="warningNotification" class="hidden fixed top-6 right-6 z-[9999]">
+    <div class="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-6 shadow-2xl backdrop-blur-sm">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fas fa-exclamation-triangle text-white text-lg"></i>
+                </div>
+            </div>
+            <div class="ml-4 flex-1">
+                <h3 class="text-sm font-bold text-yellow-800">Warning</h3>
+                <div class="mt-2 text-sm text-yellow-700">
+                    <p id="warningMessage">Please check your input.</p>
+                </div>
+                <div class="mt-4">
+                    <button type="button" onclick="hideWarningNotification()" class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 transition-all duration-200">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Email Notification Change Confirmation Modal -->
+<div id="emailNotificationConfirmationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+    <div class="relative top-20 mx-auto p-8 border-0 w-96 shadow-2xl rounded-2xl bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl shadow-lg">
+                <i class="fas fa-envelope text-blue-600 text-2xl"></i>
+            </div>
+            <div class="mt-6 text-center">
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Change Email Notifications</h3>
+                <div class="mt-4 px-4 py-4">
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        To change your email notification preferences, you need to verify your identity with your account password.
+                    </p>
+                    <div class="mt-6 text-left bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-200">
+                        <div class="text-sm text-gray-700">
+                            <p class="font-semibold text-blue-800 mb-3">Security Notice:</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-key text-blue-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Your password is required for security</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-history text-indigo-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Changes will be logged for monitoring</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-user-shield text-green-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Email notifications affect your privacy</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-cog text-purple-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>You can change this setting anytime</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <label for="emailNotificationPassword" class="block text-sm font-semibold text-gray-700 text-left mb-2">Account Password</label>
+                        <input type="password" id="emailNotificationPassword" 
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                               placeholder="Enter your password">
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="confirmEmailNotificationBtn" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                        <i class="fas fa-check mr-2"></i>Verify & Update
+                    </button>
+                    <button onclick="hideEmailNotificationConfirmationModal()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transform hover:scale-105 transition-all duration-200">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Disconnect Zoho Confirmation Modal -->
+<div id="enhancedDisconnectZohoConfirmationModal" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+    <div class="relative top-10 mx-auto p-8 border-0 w-96 shadow-2xl rounded-2xl bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto bg-gradient-to-br from-red-100 to-red-200 rounded-2xl shadow-lg">
+                <i class="fas fa-unlink text-red-600 text-2xl"></i>
+            </div>
+            <div class="mt-6 text-center">
+                <h3 class="text-xl font-bold text-gray-900 mb-2">Enhanced Security Verification</h3>
+                <div class="mt-4 px-4 py-4">
+                    <p class="text-sm text-gray-600 leading-relaxed">
+                        To disconnect from Zoho, you need to verify your identity with enhanced security measures.
+                    </p>
+                    <div class="mt-6 text-left bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-xl border border-red-200">
+                        <div class="text-sm text-gray-700">
+                            <p class="font-semibold text-red-800 mb-3">Security Requirements:</p>
+                            <ul class="space-y-2">
+                                <li class="flex items-start">
+                                    <i class="fas fa-key text-red-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Your account password</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-envelope text-blue-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Email verification code</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-id-card text-purple-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Your Zoho Client ID</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-shield-alt text-green-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>Your Zoho Client Secret</span>
+                                </li>
+                                <li class="flex items-start">
+                                    <i class="fas fa-exclamation-triangle text-orange-500 mt-0.5 mr-2 flex-shrink-0"></i>
+                                    <span>This action cannot be undone</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Email Code Section -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-semibold text-gray-700 text-left mb-2">Email Verification Code</label>
+                        <div class="flex space-x-2">
+                            <input type="text" id="enhancedDisconnectEmailCode" 
+                                   class="flex-1 rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 transition-all duration-200"
+                                   placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]{6}">
+                            <button id="sendEnhancedDisconnectEmailCodeBtn" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                                <i class="fas fa-paper-plane mr-1"></i>Send Code
+                            </button>
+                        </div>
+                        <div id="enhancedDisconnectEmailCodeStatus" class="mt-2 text-xs"></div>
+                    </div>
+                    
+                    <!-- Password Section -->
+                    <div class="mt-4">
+                        <label for="enhancedDisconnectPassword" class="block text-sm font-semibold text-gray-700 text-left mb-2">Account Password</label>
+                        <input type="password" id="enhancedDisconnectPassword" 
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 transition-all duration-200"
+                               placeholder="Enter your password">
+                    </div>
+                    
+                    <!-- Client ID Section -->
+                    <div class="mt-4">
+                        <label for="enhancedDisconnectClientId" class="block text-sm font-semibold text-gray-700 text-left mb-2">Zoho Client ID</label>
+                        <input type="text" id="enhancedDisconnectClientId" 
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 transition-all duration-200"
+                               placeholder="Enter your Zoho Client ID">
+                    </div>
+                    
+                    <!-- Client Secret Section -->
+                    <div class="mt-4">
+                        <label for="enhancedDisconnectClientSecret" class="block text-sm font-semibold text-gray-700 text-left mb-2">Zoho Client Secret</label>
+                        <input type="password" id="enhancedDisconnectClientSecret" 
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 transition-all duration-200"
+                               placeholder="Enter your Zoho Client Secret">
+                    </div>
+                </div>
+                <div class="flex justify-center space-x-4 mt-6">
+                    <button id="confirmEnhancedDisconnectBtn" class="bg-gradient-to-r from-red-600 to-orange-600 text-white px-6 py-3 rounded-xl text-sm font-semibold hover:from-red-700 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transform hover:scale-105 transition-all duration-200 shadow-lg">
+                        <i class="fas fa-unlink mr-2"></i>Verify & Disconnect
+                    </button>
+                    <button onclick="hideEnhancedDisconnectZohoConfirmationModal()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl text-sm font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transform hover:scale-105 transition-all duration-200">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Settings Page -->
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div class="container mx-auto px-4 py-12">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header Section -->
+            <div class="mb-12 text-center">
+                <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-6">
+                    <i class="fas fa-cog text-white text-3xl"></i>
+                </div>
+                <h1 class="text-4xl font-bold text-gray-900 mb-4">Settings</h1>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Manage your account preferences, integrations, and security settings</p>
+            </div>
+
+            <!-- Zoho Integration Section -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-plug text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Zoho Integration</h2>
+                        <p class="text-gray-600">Connect your Zoho inventory for seamless synchronization</p>
+                    </div>
+                </div>
+                
+                <!-- Connection Status Card -->
+                <div class="mb-8 p-6 rounded-2xl border-2 {% if current_user.zoho_access_token %}border-green-200 bg-gradient-to-r from-green-50 to-emerald-50{% else %}border-red-200 bg-gradient-to-r from-red-50 to-pink-50{% endif %} shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+            {% if current_user.zoho_access_token %}
+                                    <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                        <i class="fas fa-check-circle text-white text-2xl"></i>
+                                    </div>
+                                {% else %}
+                                    <div class="w-12 h-12 bg-gradient-to-br from-red-400 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                        <i class="fas fa-times-circle text-white text-2xl"></i>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="ml-4">
+                                <h3 class="text-xl font-bold {% if current_user.zoho_access_token %}text-green-800{% else %}text-red-800{% endif %}">
+                                    {% if current_user.zoho_access_token %}Connected to Zoho{% else %}Not Connected to Zoho{% endif %}
+                                </h3>
+                                <p class="text-sm {% if current_user.zoho_access_token %}text-green-700{% else %}text-red-700{% endif %} mt-1">
+                                    {% if current_user.zoho_access_token %}
+                                        Your inventory will be synced when you visit the inventory page.
+                                    {% else %}
+                                        Please configure your Zoho credentials to connect your account.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% if current_user.zoho_access_token %}
+                            <div class="flex-shrink-0">
+                                <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 shadow-md">
+                                    <i class="fas fa-sync-alt mr-2"></i>Active
+                                </span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% if current_user.zoho_access_token %}
+                <!-- Secure Credential Access -->
+                    <div class="mb-8 bg-gradient-to-r from-gray-50 to-slate-100 p-6 rounded-2xl border border-gray-200 shadow-lg">
+                        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                            <i class="fas fa-shield-alt text-blue-600 mr-3"></i>
+                            Secure Credential Access
+                        </h3>
+                        <p class="text-gray-600 mb-6">Access your stored Zoho credentials securely. You'll need to verify your identity.</p>
+                        
+                        <div class="space-y-6">
+                        <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client ID</label>
+                                <div class="flex items-center">
+                                <input type="password" id="zoho_client_id_display" 
+                                       value="••••••••••••••••••••"
+                                           class="flex-1 rounded-xl border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                       readonly>
+                                    <button type="button" onclick="showCredentialAccessConfirmationModal('zoho_client_id')" 
+                                            class="ml-4 px-6 py-3 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg transform hover:scale-105">
+                                        <i class="fas fa-eye mr-2"></i>View
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client Secret</label>
+                                <div class="flex items-center">
+                                <input type="password" id="zoho_client_secret_display" 
+                                       value="••••••••••••••••••••"
+                                           class="flex-1 rounded-xl border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                       readonly>
+                                    <button type="button" onclick="showCredentialAccessConfirmationModal('zoho_client_secret')" 
+                                            class="ml-4 px-6 py-3 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg transform hover:scale-105">
+                                        <i class="fas fa-eye mr-2"></i>View
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Security Dashboard -->
+                        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-200 rounded-2xl flex items-center justify-center shadow-lg">
+                                            <i class="fas fa-shield-alt text-green-600 text-xl"></i>
+                                </div>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <p class="text-sm font-semibold text-gray-900">Session Status</p>
+                                        <p class="text-xs text-gray-500 mt-1" id="session-status">Not verified</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-2xl flex items-center justify-center shadow-lg">
+                                            <i class="fas fa-clock text-blue-600 text-xl"></i>
+                                </div>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <p class="text-sm font-semibold text-gray-900">Session Expires</p>
+                                        <p class="text-xs text-gray-500 mt-1" id="session-expiry">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                            <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0">
+                                        <div class="w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-200 rounded-2xl flex items-center justify-center shadow-lg">
+                                            <i class="fas fa-eye text-purple-600 text-xl"></i>
+                                </div>
+                                    </div>
+                                    <div class="ml-4 flex-1">
+                                        <p class="text-sm font-semibold text-gray-900">Access Count</p>
+                                        <p class="text-xs text-gray-500 mt-1" id="access-count">0</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                        <div class="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                    <i class="fas fa-shield-alt text-yellow-500 text-lg"></i>
+                            </div>
+                            <div class="ml-3">
+                                    <p class="text-sm text-yellow-800 font-medium">
+                                    <strong>Security Notice:</strong> Credential access is logged and monitored for security purposes.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Security Audit -->
+                        <div class="mt-6">
+                            <button onclick="toggleSecurityAudit()" class="text-sm text-blue-600 hover:text-blue-800 font-semibold transition-colors duration-200 flex items-center">
+                                <i class="fas fa-history mr-2"></i>View Security Audit Log
+                        </button>
+                        
+                            <div id="security-audit" class="mt-4 hidden">
+                                <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg">
+                                    <h4 class="text-sm font-semibold text-gray-900 mb-4">Recent Credential Access</h4>
+                                    <div id="audit-logs" class="space-y-3 max-h-48 overflow-y-auto">
+                                    <p class="text-sm text-gray-500">Loading...</p>
+                                </div>
+                                    <div class="mt-4 pt-4 border-t border-gray-200">
+                                        <p class="text-xs text-gray-500 flex items-center">
+                                            <i class="fas fa-info-circle mr-2"></i>
+                                        All credential access is logged with timestamp and IP address for security monitoring.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-4">
+                        <button onclick="showEnhancedDisconnectZohoConfirmationModal()" class="bg-gradient-to-r from-red-600 to-pink-600 text-white px-8 py-3 rounded-xl hover:from-red-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105">
+                            <i class="fas fa-unlink mr-2"></i>Disconnect from Zoho
+                    </button>
+                </div>
+            {% else %}
+                <!-- Zoho Developer Credentials Form -->
+                    <div class="mb-8 bg-gradient-to-r from-gray-50 to-slate-100 p-8 rounded-2xl border border-gray-200 shadow-lg">
+                        <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                            <i class="fas fa-key text-blue-600 mr-3"></i>
+                            Configure Zoho Credentials
+                        </h3>
+                        <div class="space-y-6">
+                            <div>
+                                <label for="zoho_client_id" class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client ID</label>
+                        <input type="text" id="zoho_client_id" 
+                               placeholder="Enter your Zoho Client ID"
+                                       class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200">
+                                <p class="mt-2 text-sm text-gray-500 flex items-center">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Get this from your Zoho Developer Console
+                                </p>
+                    </div>
+                    
+                            <div>
+                                <label for="zoho_client_secret" class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client Secret</label>
+                        <input type="password" id="zoho_client_secret" 
+                               placeholder="Enter your Zoho Client Secret"
+                                       class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200">
+                                <p class="mt-2 text-sm text-gray-500 flex items-center">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    Get this from your Zoho Developer Console
+                                </p>
+                    </div>
+                    
+                            <div class="pt-4">
+                                <button onclick="showSaveCredentialsConfirmationModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105">
+                                    <i class="fas fa-save mr-2"></i>Save Credentials
+                    </button>
+                            </div>
+                        </div>
+                </div>
+                
+                    <div class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl shadow-lg">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-info-circle text-blue-500 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-blue-800 font-medium">
+                                    <strong>Next Step:</strong> After saving your credentials, click "Connect to Zoho" to authorize the application.
+                                </p>
+                            </div>
+                        </div>
+                </div>
+                
+                    <div class="mb-8 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl shadow-lg">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas fa-eye text-yellow-500 text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm text-yellow-800 font-medium">
+                                    <strong>View Credentials:</strong> The "View" buttons for your credentials will appear after you connect to Zoho. This is a security feature to ensure your credentials are only accessible after proper authentication.
+                                </p>
+                            </div>
+                        </div>
+                </div>
+                
+                    <div class="flex space-x-4">
+                        <a href="{{ url_for('auth.zoho_auth') }}" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105 inline-flex items-center">
+                            <i class="fas fa-plug mr-2"></i>Connect to Zoho
+                </a>
+                    </div>
+            {% endif %}
+        </div>
+
+            <!-- Notification Preferences Section -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-bell text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Notification Preferences</h2>
+                        <p class="text-gray-600">Manage how you receive notifications and updates</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between p-6 bg-gradient-to-r from-gray-50 to-slate-100 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
+                        <div>
+                            <label class="text-lg font-semibold text-gray-900">Email Notifications</label>
+                            <p class="text-gray-600 mt-1">Receive notifications via email</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="email_notifications" class="sr-only" 
+                               {% if current_user.email_notifications %}checked{% endif %}
+                                   style="pointer-events: none;">
+                            <div id="email_notifications_toggle" class="w-14 h-7 bg-gray-200 rounded-full relative transition-all duration-300 ease-in-out shadow-inner" onclick="handleEmailNotificationToggle()">
+                                <div id="email_notifications_thumb" class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-6 w-6 transition-all duration-300 ease-in-out shadow-lg {% if current_user.email_notifications %}translate-x-7 bg-gradient-to-r from-green-500 to-emerald-500{% endif %}"></div>
+                            </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+            <!-- Account Settings Section -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-user text-white text-xl"></i>
+                    </div>
+                <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Account Settings</h2>
+                        <p class="text-gray-600">View and manage your account information</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-6">
+                    <div class="p-6 bg-gradient-to-r from-gray-50 to-slate-100 rounded-2xl border border-gray-200 shadow-lg">
+                        <label for="username" class="block text-sm font-semibold text-gray-700 mb-3">Username</label>
+                    <input type="text" id="username" value="{{ current_user.username }}"
+                               class="block w-full rounded-xl border-gray-300 bg-white shadow-sm focus:border-purple-500 focus:ring-purple-500 transition-all duration-200" readonly>
+                </div>
+
+                    <div class="p-6 bg-gradient-to-r from-gray-50 to-slate-100 rounded-2xl border border-gray-200 shadow-lg">
+                        <label for="email" class="block text-sm font-semibold text-gray-700 mb-3">Email</label>
+                    <input type="email" id="email" value="{{ current_user.email }}"
+                               class="block w-full rounded-xl border-gray-300 bg-white shadow-sm focus:border-purple-500 focus:ring-purple-500 transition-all duration-200" readonly>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Modal functions
+function showDisconnectZohoConfirmationModal() {
+    const modal = document.getElementById('disconnectZohoConfirmationModal');
+    const passwordInput = modal.querySelector('#disconnectPassword');
+    
+    passwordInput.value = ''; // Clear previous password
+    passwordInput.focus(); // Set focus to password input
+    
+    modal.classList.remove('hidden');
+}
+
+function hideDisconnectZohoConfirmationModal() {
+    const modal = document.getElementById('disconnectZohoConfirmationModal');
+    modal.classList.add('hidden');
+}
+
+function showSaveCredentialsConfirmationModal() {
+    const clientId = document.getElementById('zoho_client_id').value.trim();
+    const clientSecret = document.getElementById('zoho_client_secret').value.trim();
+    
+    if (!clientId || !clientSecret) {
+        showNotification('Both Zoho Client ID and Client Secret are required', 'error');
+        return;
+    }
+    
+    const modal = document.getElementById('saveCredentialsConfirmationModal');
+    modal.classList.remove('hidden');
+}
+
+function hideSaveCredentialsConfirmationModal() {
+    const modal = document.getElementById('saveCredentialsConfirmationModal');
+    modal.classList.add('hidden');
+}
+
+function showEmailNotificationConfirmationModal(intendedState) {
+    const modal = document.getElementById('emailNotificationConfirmationModal');
+    const passwordInput = modal.querySelector('#emailNotificationPassword');
+    
+    passwordInput.value = ''; // Clear previous password
+    passwordInput.focus(); // Set focus to password input
+    
+    // Store the intended state in the modal for later use
+    modal.setAttribute('data-intended-state', intendedState);
+    
+    modal.classList.remove('hidden');
+}
+
+function hideEmailNotificationConfirmationModal() {
+    const modal = document.getElementById('emailNotificationConfirmationModal');
+    modal.classList.add('hidden');
+    
+    // Don't change the checkbox or visual state - let it stay in its current state
+    // The checkbox and visual state will be updated only after successful verification
+}
+
+// Notification functions
+function showNotification(message, type) {
+    const notification = document.getElementById(`${type}Notification`);
+    const messageElement = notification.querySelector(`#${type}Message`);
+    
+    messageElement.textContent = message;
+    notification.classList.remove('hidden');
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        hideNotification(type);
+    }, 5000);
+}
+
+function hideNotification(type) {
+    const notification = document.getElementById(`${type}Notification`);
+    notification.classList.add('hidden');
+}
+
+function hideSuccessNotification() {
+    hideNotification('success');
+}
+
+function hideErrorNotification() {
+    hideNotification('error');
+}
+
+function hideWarningNotification() {
+    hideNotification('warning');
+}
+
+async function updateNotificationSettings() {
+    const emailNotifications = document.getElementById('email_notifications').checked;
+    
+    try {
+        const response = await fetch('/api/v1/settings/notifications', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                email_notifications: emailNotifications
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('Notification settings updated successfully', 'success');
+        } else {
+            showNotification(data.error || 'Failed to update notification settings', 'error');
+            // Revert the checkbox if update failed
+            document.getElementById('email_notifications').checked = !emailNotifications;
+        }
+    } catch (error) {
+        console.error('Error updating notification settings:', error);
+        showNotification('Failed to update notification settings', 'error');
+        // Revert the checkbox if update failed
+        document.getElementById('email_notifications').checked = !emailNotifications;
+    }
+}
+
+async function saveZohoCredentials() {
+    const clientId = document.getElementById('zoho_client_id').value.trim();
+    const clientSecret = document.getElementById('zoho_client_secret').value.trim();
+    
+    if (!clientId || !clientSecret) {
+        showNotification('Both Zoho Client ID and Client Secret are required', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/v1/settings/zoho-credentials', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                zoho_client_id: clientId,
+                zoho_client_secret: clientSecret
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('Zoho credentials saved successfully', 'success');
+            hideSaveCredentialsConfirmationModal();
+            // Clear the form fields after successful save
+            document.getElementById('zoho_client_id').value = '';
+            document.getElementById('zoho_client_secret').value = '';
+            // Reload the page to show the updated state
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else if (response.status === 409) {
+            // Handle duplicate credentials error
+            showNotification(data.error || 'These Zoho credentials are already being used by another user. Please use different credentials.', 'error');
+        } else {
+            showNotification(data.error || 'Failed to save Zoho credentials', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving Zoho credentials:', error);
+        showNotification('Failed to save Zoho credentials', 'error');
+    }
+}
+
+async function disconnectZoho() {
+    try {
+        const response = await fetch('/api/v1/settings/disconnect-zoho', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showNotification('Successfully disconnected from Zoho', 'success');
+            hideDisconnectZohoConfirmationModal();
+            // Reload the page to update the UI
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification(data.error || 'Failed to disconnect from Zoho', 'error');
+        }
+    } catch (error) {
+        console.error('Error disconnecting from Zoho:', error);
+        showNotification('Failed to disconnect from Zoho', 'error');
+    }
+}
+
+// HTML escaping function to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Secure credential access system
+let credentialAccessSession = {
+    verified: false,
+    expiresAt: null,
+    accessCount: 0
+};
+
+// Add event listeners for modal buttons
+document.addEventListener('DOMContentLoaded', function() {
+    // Disconnect Zoho confirmation
+    const confirmDisconnectBtn = document.getElementById('confirmDisconnectZohoBtn');
+    if (confirmDisconnectBtn) {
+        confirmDisconnectBtn.addEventListener('click', () => {
+            const password = document.getElementById('disconnectPassword').value;
+            
+            if (!password) {
+                showNotification('Please enter your password', 'error');
+                return;
+            }
+            
+            verifyPasswordForDisconnect(password);
+        });
+    }
+    
+    // Save credentials confirmation
+    const confirmSaveBtn = document.getElementById('confirmSaveCredentialsBtn');
+    if (confirmSaveBtn) {
+        confirmSaveBtn.addEventListener('click', saveZohoCredentials);
+    }
+    
+    // Credential access confirmation
+    const confirmCredentialAccessBtn = document.getElementById('confirmCredentialAccessBtn');
+    if (confirmCredentialAccessBtn) {
+        confirmCredentialAccessBtn.addEventListener('click', () => {
+            const password = document.getElementById('credentialPassword').value;
+            const emailCode = document.getElementById('credentialEmailCode').value;
+            const credentialType = confirmCredentialAccessBtn.getAttribute('data-credential-type');
+            
+            if (!password) {
+                showNotification('Please enter your password', 'error');
+                return;
+            }
+            
+            if (!emailCode) {
+                showNotification('Please enter the email verification code', 'error');
+                return;
+            }
+            
+            verifyCredentialAccess(password, emailCode, credentialType);
+        });
+    }
+    
+    // Email code request button
+    const sendEmailCodeBtn = document.getElementById('sendEmailCodeBtn');
+    if (sendEmailCodeBtn) {
+        sendEmailCodeBtn.addEventListener('click', requestEmailCode);
+    }
+    
+    // Enter key support for credential access modal
+    const credentialPasswordInput = document.getElementById('credentialPassword');
+    if (credentialPasswordInput) {
+        credentialPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const confirmBtn = document.getElementById('confirmCredentialAccessBtn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
+            }
+        });
+    }
+    
+    // Enter key support for email code input
+    const credentialEmailCodeInput = document.getElementById('credentialEmailCode');
+    if (credentialEmailCodeInput) {
+        credentialEmailCodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const confirmBtn = document.getElementById('confirmCredentialAccessBtn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
+            }
+        });
+    }
+    
+    // Enter key support for disconnect modal
+    const disconnectPasswordInput = document.getElementById('disconnectPassword');
+    if (disconnectPasswordInput) {
+        disconnectPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const confirmBtn = document.getElementById('confirmDisconnectZohoBtn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
+            }
+        });
+    }
+    
+    // Email notification confirmation
+    const confirmEmailNotificationBtn = document.getElementById('confirmEmailNotificationBtn');
+    if (confirmEmailNotificationBtn) {
+        confirmEmailNotificationBtn.addEventListener('click', () => {
+            const password = document.getElementById('emailNotificationPassword').value;
+            
+            if (!password) {
+                showNotification('Please enter your password', 'error');
+                return;
+            }
+            
+            verifyPasswordForEmailNotification(password);
+        });
+    }
+    
+    // Enter key support for email notification modal
+    const emailNotificationPasswordInput = document.getElementById('emailNotificationPassword');
+    if (emailNotificationPasswordInput) {
+        emailNotificationPasswordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const confirmBtn = document.getElementById('confirmEmailNotificationBtn');
+                if (confirmBtn) {
+                    confirmBtn.click();
+                }
+            }
+        });
+    }
+});
+
+function showCredentialAccessConfirmationModal(credentialType) {
+    // Check if user is already verified in this session
+    if (credentialAccessSession.verified && credentialAccessSession.expiresAt > Date.now()) {
+        showCredential(credentialType);
+        return;
+    }
+    
+    const modal = document.getElementById('credentialAccessConfirmationModal');
+    
+    if (!modal) {
+        console.error('Modal not found!');
+        return;
+    }
+    
+    const passwordInput = modal.querySelector('#credentialPassword');
+    const emailCodeInput = modal.querySelector('#credentialEmailCode');
+    const confirmBtn = modal.querySelector('#confirmCredentialAccessBtn');
+    const statusDiv = modal.querySelector('#emailCodeStatus');
+    
+    // Clear previous inputs and status
+    passwordInput.value = '';
+    emailCodeInput.value = '';
+    statusDiv.innerHTML = '';
+    
+    // Reset send code button
+    const sendBtn = modal.querySelector('#sendEmailCodeBtn');
+    if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Send Code';
+    }
+    
+    passwordInput.focus(); // Set focus to password input
+    
+    // Store the credential type for the confirm button
+    confirmBtn.setAttribute('data-credential-type', credentialType);
+    
+    // Update modal title based on credential type
+    const modalTitle = modal.querySelector('h3');
+    modalTitle.textContent = `Access ${credentialType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+    
+    // Update modal message based on credential type
+    const modalMessage = modal.querySelector('p.text-sm.text-gray-600');
+    modalMessage.textContent = `To view your ${credentialType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toLowerCase())} credentials, you need to verify your identity with your account password and email verification code.`;
+    
+    // Update button text based on credential type
+    confirmBtn.textContent = `Verify & Access ${credentialType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`;
+    
+    // Show the modal
+    modal.classList.remove('hidden');
+}
+
+function hideCredentialAccessConfirmationModal() {
+    const modal = document.getElementById('credentialAccessConfirmationModal');
+    modal.classList.add('hidden');
+}
+
+function updateSecurityDashboard() {
+    const sessionStatus = document.getElementById('session-status');
+    const sessionExpiry = document.getElementById('session-expiry');
+    const accessCount = document.getElementById('access-count');
+    
+    if (credentialAccessSession.verified && credentialAccessSession.expiresAt > Date.now()) {
+        sessionStatus.textContent = 'Verified';
+        sessionStatus.className = 'text-xs text-green-600 font-medium';
+        
+        const timeLeft = Math.max(0, credentialAccessSession.expiresAt - Date.now());
+        const minutes = Math.floor(timeLeft / 60000);
+        const seconds = Math.floor((timeLeft % 60000) / 1000);
+        sessionExpiry.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        accessCount.textContent = credentialAccessSession.accessCount.toString();
+    } else {
+        sessionStatus.textContent = 'Not verified';
+        sessionStatus.className = 'text-xs text-gray-500';
+        sessionExpiry.textContent = '-';
+        accessCount.textContent = '0';
+    }
+}
+
+// Update dashboard every second
+setInterval(updateSecurityDashboard, 1000);
+
+function verifyPasswordForDisconnect(password) {
+    console.log('Disconnect verification - Password length:', password.length);
+    console.log('Disconnect verification - Password value:', password);
+    
+    fetch('/api/v1/settings/verify-password-for-disconnect', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            password: password
+        })
+    })
+    .then(response => {
+        console.log('Disconnect verification - Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Disconnect verification - Response data:', data);
+        if (data.success) {
+            disconnectZoho();
+        } else {
+            showNotification(data.error || 'Password verification failed', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error verifying password for disconnect:', error);
+        showNotification('Verification failed. Please try again.', 'error');
+    });
+}
+
+function verifyCredentialAccess(password, emailCode, credentialType) {
+    console.log('Credential verification - Password length:', password.length);
+    console.log('Credential verification - Password value:', password);
+    console.log('Credential verification - Type:', credentialType);
+    console.log('Credential verification - Email code:', emailCode);
+    
+    fetch('/api/v1/settings/verify-credential-access', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            password: password,
+            email_code: emailCode,
+            credential_type: credentialType
+        })
+    })
+    .then(response => {
+        console.log('Credential verification - Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Credential verification - Response data:', data);
+        if (data.success) {
+            // Set up secure session (15 minutes as per backend)
+            credentialAccessSession.verified = true;
+            credentialAccessSession.expiresAt = Date.now() + (15 * 60 * 1000); // 15 minutes
+            credentialAccessSession.accessCount++;
+            
+            showNotification('Identity verified successfully', 'success');
+            hideCredentialAccessConfirmationModal();
+            showCredential(credentialType);
+            updateSecurityDashboard();
+        } else {
+            const remainingText = data.remaining_attempts ? ` (${data.remaining_attempts} attempts remaining)` : '';
+            showNotification(data.error + remainingText || 'Credential verification failed', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error verifying credential access:', error);
+        showNotification('Verification failed. Please try again.', 'error');
+    });
+}
+
+function showCredential(credentialType) {
+    console.log('showCredential called with:', credentialType);
+    
+    const displayInput = document.getElementById(`${credentialType}_display`);
+    const viewButton = displayInput.nextElementSibling;
+    
+    console.log('Display input:', displayInput);
+    console.log('View button:', viewButton);
+    
+    // Get credential from server
+    fetch('/api/v1/settings/get-zoho-credential', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            credential_type: credentialType
+        })
+    })
+    .then(response => {
+        console.log('API response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('API response data:', data);
+        if (data.success) {
+            // Show credential temporarily
+            displayInput.type = 'text';
+            displayInput.value = data.credential;
+            
+            // Change button to "Hide"
+            viewButton.innerHTML = '<i class="fas fa-eye-slash mr-2"></i>Hide';
+            // Remove the onclick attribute and add event listener
+            viewButton.removeAttribute('onclick');
+            viewButton.onclick = () => hideCredential(credentialType);
+            
+            // Auto-hide after 30 seconds
+            setTimeout(() => {
+                if (displayInput.type === 'text') {
+                    hideCredential(credentialType);
+                }
+            }, 30000);
+            
+            showNotification('Credential displayed. Will auto-hide in 30 seconds.', 'success');
+        } else {
+            console.error('API returned error:', data.error);
+            showNotification(data.error || 'Failed to retrieve credential', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error retrieving credential:', error);
+        showNotification('Failed to retrieve credential', 'error');
+    });
+}
+
+function hideCredential(credentialType) {
+    const displayInput = document.getElementById(`${credentialType}_display`);
+    const viewButton = displayInput.nextElementSibling;
+    
+    // Hide credential
+    displayInput.type = 'password';
+    displayInput.value = '••••••••••••••••••••';
+    
+    // Change button back to "View"
+    viewButton.innerHTML = '<i class="fas fa-eye mr-2"></i>View';
+    // Remove the onclick attribute and add event listener
+    viewButton.removeAttribute('onclick');
+    viewButton.onclick = () => showCredentialAccessConfirmationModal(credentialType);
+    
+    showNotification('Credential hidden', 'success');
+}
+
+// Check session expiry every minute
+setInterval(() => {
+    if (credentialAccessSession.verified && credentialAccessSession.expiresAt <= Date.now()) {
+        credentialAccessSession.verified = false;
+        credentialAccessSession.expiresAt = null;
+        credentialAccessSession.accessCount = 0;
+        
+        // Hide any visible credentials
+        const clientIdInput = document.getElementById('zoho_client_id_display');
+        const clientSecretInput = document.getElementById('zoho_client_secret_display');
+        
+        if (clientIdInput && clientIdInput.type === 'text') {
+            hideCredential('zoho_client_id');
+        }
+        if (clientSecretInput && clientSecretInput.type === 'text') {
+            hideCredential('zoho_client_secret');
+        }
+        
+        showNotification('Security session expired. Please verify your identity again.', 'error');
+        updateSecurityDashboard();
+    }
+}, 60000);
+
+// Debug: Check if functions exist when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, checking functions...');
+    console.log('showCredentialAccessConfirmationModal exists:', typeof showCredentialAccessConfirmationModal);
+    console.log('showCredential exists:', typeof showCredential);
+    console.log('hideCredential exists:', typeof hideCredential);
+    
+    // Check if buttons exist
+    const clientIdButton = document.querySelector('button[onclick*="zoho_client_id"]');
+    const clientSecretButton = document.querySelector('button[onclick*="zoho_client_secret"]');
+    console.log('Client ID button found:', clientIdButton);
+    console.log('Client Secret button found:', clientSecretButton);
+    
+    // Check if modal exists
+    const modal = document.getElementById('credentialAccessConfirmationModal');
+    console.log('Modal found:', modal);
+});
+
+function toggleSecurityAudit() {
+    const auditSection = document.getElementById('security-audit');
+    if (auditSection.classList.contains('hidden')) {
+        auditSection.classList.remove('hidden');
+        loadAuditLogs();
+    } else {
+        auditSection.classList.add('hidden');
+    }
+}
+
+async function loadAuditLogs() {
+    try {
+        const response = await fetch('/api/v1/settings/credential-access-logs', {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            const auditLogs = document.getElementById('audit-logs');
+            auditLogs.innerHTML = '';
+            
+            if (data.logs.length === 0) {
+                auditLogs.innerHTML = '<p class="text-sm text-gray-500">No recent credential access logs found.</p>';
+                return;
+            }
+            
+            data.logs.forEach(log => {
+                const logElement = document.createElement('div');
+                logElement.className = 'text-xs text-gray-600 p-2 bg-gray-50 rounded';
+                
+                // Parse the log line to extract information
+                const parts = log.split(' - ');
+                if (parts.length >= 4) {
+                    const timestamp = parts[0];
+                    const level = parts[1];
+                    const message = parts[2];
+                    
+                    logElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <span class="font-medium">${timestamp}</span>
+                            <span class="text-xs px-2 py-1 rounded ${
+                                level === 'INFO' ? 'bg-green-100 text-green-800' : 
+                                level === 'WARNING' ? 'bg-yellow-100 text-yellow-800' : 
+                                'bg-red-100 text-red-800'
+                            }">${level}</span>
+                        </div>
+                        <div class="mt-1">${message}</div>
+                    `;
+                } else {
+                    logElement.textContent = log;
+                }
+                
+                auditLogs.appendChild(logElement);
+            });
+            
+            showNotification('Security audit logs loaded successfully', 'success');
+        } else {
+            showNotification(data.error || 'Failed to load security audit logs', 'error');
+        }
+    } catch (error) {
+        console.error('Error loading security audit logs:', error);
+        showNotification('Failed to load security audit logs', 'error');
+    }
+}
+
+function verifyPasswordForEmailNotification(password) {
+    const modal = document.getElementById('emailNotificationConfirmationModal');
+    const intendedState = modal.getAttribute('data-intended-state') === 'true';
+    
+    fetch('/api/v1/settings/verify-password-for-email-notification', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            password: password
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            hideEmailNotificationConfirmationModal();
+            // Update the checkbox to the intended state
+            const checkbox = document.getElementById('email_notifications');
+            const toggle = document.getElementById('email_notifications_toggle');
+            const thumb = document.getElementById('email_notifications_thumb');
+            
+            checkbox.checked = intendedState;
+            
+            // Update visual state
+            if (intendedState) {
+                toggle.classList.remove('bg-gray-200');
+                toggle.classList.add('bg-blue-600');
+                thumb.classList.add('translate-x-5');
+            } else {
+                toggle.classList.remove('bg-blue-600');
+                toggle.classList.add('bg-gray-200');
+                thumb.classList.remove('translate-x-5');
+            }
+            
+            // Now update the settings
+            updateNotificationSettings();
+        } else {
+            showNotification(data.error || 'Password verification failed', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error verifying password for email notification:', error);
+        showNotification('Verification failed. Please try again.', 'error');
+    });
+}
+
+function handleEmailNotificationToggle() {
+    const checkbox = document.getElementById('email_notifications');
+    const toggle = document.getElementById('email_notifications_toggle');
+    const thumb = document.getElementById('email_notifications_thumb');
+    const currentState = checkbox.checked;
+    const intendedState = !currentState; // Toggle to opposite state
+    
+    // Show the confirmation modal with the intended state
+    showEmailNotificationConfirmationModal(intendedState);
+}
+
+function requestEmailCode() {
+    const sendBtn = document.getElementById('sendEmailCodeBtn');
+    const statusDiv = document.getElementById('emailCodeStatus');
+    
+    // Disable button and show loading
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Sending...';
+    statusDiv.innerHTML = '<span class="text-blue-600">Sending verification code...</span>';
+    
+    fetch('/api/v1/settings/request-credential-access-code', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({}) // Send empty JSON object instead of no body
+    })
+    .then(response => {
+        console.log('Email code request - Response status:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Email code request - Response data:', data);
+        if (data.success) {
+            if (data.email_configured === false) {
+                // Email not configured - show code in status
+                const remainingText = data.remaining_attempts ? ` (${data.remaining_attempts} attempts remaining)` : '';
+                statusDiv.innerHTML = `<span class="text-green-600">✓ ${escapeHtml(data.message)} <strong>${escapeHtml(data.verification_code)}</strong>${remainingText}</span>`;
+                showNotification('Verification code generated (email not configured)', 'success');
+                
+                // Auto-fill the email code input
+                const emailCodeInput = document.getElementById('credentialEmailCode');
+                if (emailCodeInput) {
+                    emailCodeInput.value = data.verification_code;
+                }
+            } else {
+                // Email configured and sent
+                const remainingText = data.remaining_attempts ? ` (${data.remaining_attempts} attempts remaining)` : '';
+                statusDiv.innerHTML = `<span class="text-green-600">✓ Verification code sent to your email${remainingText}</span>`;
+                showNotification(`Verification code sent to your email${remainingText}`, 'success');
+            }
+            
+            // Re-enable button immediately on success
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Send Code';
+            
+            // Clear status after 5 seconds
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        } else {
+            statusDiv.innerHTML = '<span class="text-red-600">✗ Failed to send code: ' + escapeHtml(data.error || 'Unknown error') + '</span>';
+            showNotification(data.error || 'Failed to send verification code', 'error');
+            
+            // Re-enable button immediately on error
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Send Code';
+        }
+    })
+    .catch(error => {
+        console.error('Error requesting email code:', error);
+        statusDiv.innerHTML = '<span class="text-red-600">✗ Network error. Please try again.</span>';
+        showNotification('Failed to send verification code. Please try again.', 'error');
+        
+        // Re-enable button immediately on error
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i>Send Code';
+    });
+}
+
+function showEnhancedDisconnectZohoConfirmationModal() {
+    const modal = document.getElementById('enhancedDisconnectZohoConfirmationModal');
+    modal.classList.remove('hidden');
+}
+
+function hideEnhancedDisconnectZohoConfirmationModal() {
+    const modal = document.getElementById('enhancedDisconnectZohoConfirmationModal');
+    modal.classList.add('hidden');
+}
+
+// Enhanced Disconnect Functions
+document.addEventListener('DOMContentLoaded', function() {
+    // Send email code for enhanced disconnect
+    const sendEnhancedDisconnectEmailCodeBtn = document.getElementById('sendEnhancedDisconnectEmailCodeBtn');
+    if (sendEnhancedDisconnectEmailCodeBtn) {
+        sendEnhancedDisconnectEmailCodeBtn.addEventListener('click', async function() {
+            const statusDiv = document.getElementById('enhancedDisconnectEmailCodeStatus');
+            const originalText = this.innerHTML;
+            
+            try {
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Sending...';
+                
+                const response = await fetch('/api/v1/settings/request-enhanced-disconnect-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const remainingText = data.remaining_attempts ? ` (${data.remaining_attempts} attempts remaining)` : '';
+                    statusDiv.innerHTML = `<span class="text-green-600"><i class="fas fa-check-circle mr-1"></i>Code sent successfully!${remainingText}</span>`;
+                    showNotification(`Verification code sent to your email${remainingText}`, 'success');
+                    setTimeout(() => {
+                        statusDiv.innerHTML = '';
+                    }, 3000);
+                } else {
+                    const remainingText = data.remaining_attempts ? ` (${data.remaining_attempts} attempts remaining)` : '';
+                    statusDiv.innerHTML = `<span class="text-red-600"><i class="fas fa-exclamation-circle mr-1"></i>${escapeHtml(data.error || 'Failed to send code')}${remainingText}</span>`;
+                    showNotification(`${data.error || 'Failed to send code'}${remainingText}`, 'error');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<span class="text-red-600"><i class="fas fa-exclamation-circle mr-1"></i>Network error</span>';
+            } finally {
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }
+        });
+    }
+    
+    // Confirm enhanced disconnect
+    const confirmEnhancedDisconnectBtn = document.getElementById('confirmEnhancedDisconnectBtn');
+    if (confirmEnhancedDisconnectBtn) {
+        confirmEnhancedDisconnectBtn.addEventListener('click', async function() {
+            const password = document.getElementById('enhancedDisconnectPassword').value;
+            const emailCode = document.getElementById('enhancedDisconnectEmailCode').value;
+            const clientId = document.getElementById('enhancedDisconnectClientId').value;
+            const clientSecret = document.getElementById('enhancedDisconnectClientSecret').value;
+            
+            if (!password || !emailCode || !clientId || !clientSecret) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+            
+            const originalText = this.innerHTML;
+            
+            try {
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Verifying...';
+                
+                // First verify all security factors
+                const verifyResponse = await fetch('/api/v1/settings/verify-enhanced-disconnect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        password: password,
+                        email_code: emailCode,
+                        client_id: clientId,
+                        client_secret: clientSecret
+                    })
+                });
+                
+                const verifyData = await verifyResponse.json();
+                
+                if (!verifyResponse.ok) {
+                    if (verifyResponse.status === 429) {
+                        showNotification(verifyData.error, 'error');
+                    } else {
+                        const remainingText = verifyData.remaining_attempts ? ` (${verifyData.remaining_attempts} attempts remaining)` : '';
+                        showNotification((verifyData.error || 'Verification failed') + remainingText, 'error');
+                    }
+                    return;
+                }
+                
+                // If verification successful, proceed with disconnect
+                this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Disconnecting...';
+                
+                const disconnectResponse = await fetch('/api/v1/settings/disconnect-zoho', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({}) // Send empty JSON object instead of no body
+                });
+                
+                console.log('Disconnect response status:', disconnectResponse.status);
+                console.log('Disconnect response ok:', disconnectResponse.ok);
+                
+                let disconnectData;
+                try {
+                    disconnectData = await disconnectResponse.json();
+                    console.log('Disconnect response data:', disconnectData);
+                } catch (parseError) {
+                    console.error('Error parsing disconnect response:', parseError);
+                    const responseText = await disconnectResponse.text();
+                    console.log('Raw response text:', responseText);
+                    showNotification('Error parsing disconnect response', 'error');
+                    return;
+                }
+                
+                if (disconnectResponse.ok) {
+                    console.log('Disconnect successful, showing notification and reloading...');
+                    showNotification('Successfully disconnected from Zoho', 'success');
+                    hideEnhancedDisconnectZohoConfirmationModal();
+                    
+                    // Clear form fields
+                    document.getElementById('enhancedDisconnectPassword').value = '';
+                    document.getElementById('enhancedDisconnectEmailCode').value = '';
+                    document.getElementById('enhancedDisconnectClientId').value = '';
+                    document.getElementById('enhancedDisconnectClientSecret').value = '';
+                    
+                    // Reload the page to update the UI (same as simple disconnect)
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                    return; // Exit early to avoid the catch block
+                } else {
+                    console.log('Disconnect failed:', disconnectData.error);
+                    showNotification(disconnectData.error || 'Failed to disconnect', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error in enhanced disconnect:', error);
+                showNotification('Network error occurred', 'error');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }
+        });
+    }
+});
+</script>
 {% endblock %} 

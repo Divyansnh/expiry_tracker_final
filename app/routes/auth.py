@@ -5,8 +5,6 @@ from app.models.user import User
 from app.services.zoho_service import ZohoService
 from app.services.email_service import EmailService
 from datetime import datetime, timedelta
-import jwt
-from typing import Optional
 from app.forms.reset_password_request_form import ResetPasswordRequestForm
 from app.forms.reset_password_form import ResetPasswordForm
 from app.forms.login_form import LoginForm
@@ -43,7 +41,23 @@ def login():
                 minutes = int(remaining_time.total_seconds() / 60)
                 flash(f'Account is locked. Please try again in {minutes} minutes.', 'danger')
                 return render_template('auth/login.html', title='Login', form=form)
+        
+        # Check if user is verified BEFORE checking password
+        if not user.is_verified:
+            current_app.logger.info(f"Unverified user {user.email} attempting to login")
+            # Store email in session for verification
+            session['pending_verification_email'] = user.email
+            # Generate and send new verification code
+            email_service = EmailService()
+            if email_service.send_verification_email(user):
+                current_app.logger.info(f"Verification email sent to {user.email}")
+                flash('Please verify your email address to continue. A new verification code has been sent.', 'warning')
+            else:
+                current_app.logger.error(f"Failed to send verification email to {user.email}")
+                flash('Please verify your email address. Error sending verification email.', 'error')
+            return redirect(url_for('auth.verify_email'))
             
+        # Only check password if user is verified
         if not user.verify_password(form.password.data):
             current_app.logger.warning(f"Login failed: Invalid password for user {user.username}")
             # Increment login attempts
@@ -58,20 +72,6 @@ def login():
             return render_template('auth/login.html', title='Login', form=form)
             
         current_app.logger.info(f"User found: {user.username}, is_verified: {user.is_verified}")
-        
-        if not user.is_verified:
-            current_app.logger.info(f"Unverified user {user.email} attempting to login")
-            # Store email in session for verification
-            session['pending_verification_email'] = user.email
-            # Generate and send new verification code
-            email_service = EmailService()
-            if email_service.send_verification_email(user):
-                current_app.logger.info(f"Verification email sent to {user.email}")
-                flash('Please verify your email', 'warning')
-            else:
-                current_app.logger.error(f"Failed to send verification email to {user.email}")
-                flash('Error sending verification email', 'error')
-            return redirect(url_for('auth.verify_email'))
         
         # Reset login attempts on successful login
         user.login_attempts = 0
@@ -114,19 +114,27 @@ def register():
             
             # Validate form data
             if not all([username, email, password, confirm_password]):
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': 'All fields are required.'}), 400
                 flash('All fields are required.', 'error')
                 return render_template('auth/register.html')
             
             if password != confirm_password:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': 'Passwords do not match.'}), 400
                 flash('Passwords do not match.', 'error')
                 return render_template('auth/register.html')
             
             # Check if user already exists
             if User.query.filter_by(username=username).first():
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': 'Username already taken.'}), 400
                 flash('Username already taken.', 'error')
                 return render_template('auth/register.html')
             
             if User.query.filter_by(email=email).first():
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': 'Email already registered.'}), 400
                 flash('Email already registered.', 'error')
                 return render_template('auth/register.html')
             
@@ -137,6 +145,8 @@ def register():
             try:
                 user.password = password  # This will validate password strength
             except ValueError as e:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'message': str(e)}), 400
                 flash(str(e), 'error')
                 return render_template('auth/register.html')
             
@@ -153,18 +163,38 @@ def register():
                     # Store email in session for verification
                     session['pending_verification_email'] = user.email
                     session.modified = True  # Ensure session is saved
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({
+                            'success': True, 
+                            'message': 'Registration successful! Please check your email to verify your account.',
+                            'redirect': url_for('auth.verify_email')
+                        })
                     flash('Registration successful! Please check your email to verify your account.', 'success')
                 else:
                     current_app.logger.error(f"Failed to send verification email to {user.email}")
+                    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                        return jsonify({
+                            'success': True,
+                            'message': 'Registration successful but verification email could not be sent. Please try resending the verification email.',
+                            'redirect': url_for('auth.verify_email')
+                        })
                     flash('Registration successful but verification email could not be sent. Please try resending the verification email.', 'warning')
             except Exception as e:
                 current_app.logger.error(f"Error sending verification email: {str(e)}")
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({
+                        'success': True,
+                        'message': 'Registration successful but verification email could not be sent. Please try resending the verification email.',
+                        'redirect': url_for('auth.verify_email')
+                    })
                 flash('Registration successful but verification email could not be sent. Please try resending the verification email.', 'warning')
             
             return redirect(url_for('auth.verify_email'))
             
         except Exception as e:
             current_app.logger.error(f"Error during registration: {str(e)}")
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'message': 'An error occurred during registration. Please try again.'}), 500
             flash('An error occurred during registration. Please try again.', 'error')
             return render_template('auth/register.html')
     
@@ -259,26 +289,65 @@ def logout():
     # Redirect to login page
     return redirect(url_for('auth.login'))
 
-@auth_bp.route('/zoho/login')
+@auth_bp.route('/zoho/test-config')
 @login_required
-def zoho_login():
-    """Initiate Zoho OAuth login."""
+def zoho_test_config():
+    """Test Zoho configuration for debugging."""
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    user = current_user._get_current_object()
+    if not isinstance(user, User):
+        return jsonify({'error': 'Invalid user session'}), 401
+    
+    zoho_service = ZohoService(user)
+    
+    config_info = {
+        'user_id': user.id,
+        'has_client_id': bool(zoho_service.client_id),
+        'has_client_secret': bool(zoho_service.client_secret),
+        'client_id_preview': zoho_service.client_id[:10] + '...' if zoho_service.client_id else None,
+        'redirect_uri': zoho_service.redirect_uri,
+        'accounts_url': zoho_service.accounts_url,
+        'base_url': zoho_service.base_url,
+        'auth_url': zoho_service.get_auth_url()
+    }
+    
+    return jsonify(config_info)
+
+@auth_bp.route('/zoho/auth')
+@login_required
+def zoho_auth():
+    """Initiate Zoho OAuth flow."""
     if not current_user.is_authenticated:
         flash('Please log in first', 'error')
         return redirect(url_for('auth.login'))
         
-    try:
-        user = current_user._get_current_object()
-        if not isinstance(user, User):
-            flash('Invalid user session', 'error')
-            return redirect(url_for('auth.login'))
-            
-        zoho_service = ZohoService(user)
-        auth_url = zoho_service.get_auth_url()
-        return redirect(auth_url)
-    except Exception as e:
-        flash(f'Error connecting to Zoho: {str(e)}', 'error')
+    # Check if user has Zoho credentials (either plain text or encrypted)
+    has_credentials = (
+        (current_user.zoho_client_id and current_user.zoho_client_secret) or
+        (current_user.zoho_client_id_hash and current_user.zoho_client_secret_hash)
+    )
+    
+    if not has_credentials:
+        flash('Please configure your Zoho client credentials in Settings first.', 'error')
         return redirect(url_for('main.settings'))
+        
+    user = current_user._get_current_object()
+    if not isinstance(user, User):
+        flash('Invalid user session', 'error')
+        return redirect(url_for('auth.login'))
+        
+    zoho_service = ZohoService(user)
+    auth_url = zoho_service.get_auth_url()
+    
+    # Add debugging information
+    current_app.logger.info(f"Zoho OAuth initiated for user {user.id}")
+    current_app.logger.info(f"Redirect URI: {current_app.config['ZOHO_REDIRECT_URI']}")
+    current_app.logger.info(f"Client ID: {zoho_service.client_id[:10]}..." if zoho_service.client_id else "No client ID")
+    current_app.logger.info(f"Auth URL generated: {auth_url}")
+    
+    return redirect(auth_url)
 
 @auth_bp.route('/zoho/callback')
 @login_required
@@ -289,7 +358,22 @@ def zoho_callback():
         return redirect(url_for('auth.login'))
         
     code = request.args.get('code')
+    error = request.args.get('error')
+    error_description = request.args.get('error_description')
+    
+    # Add debugging for callback
+    current_app.logger.info(f"Zoho callback received - User: {current_user.id}")
+    current_app.logger.info(f"Code present: {bool(code)}")
+    current_app.logger.info(f"Error: {error}")
+    current_app.logger.info(f"Error description: {error_description}")
+    
+    if error:
+        current_app.logger.error(f"Zoho OAuth error: {error} - {error_description}")
+        flash(f'Zoho authorization failed: {error_description or error}', 'error')
+        return redirect(url_for('main.settings'))
+    
     if not code:
+        current_app.logger.error("No authorization code received from Zoho")
         flash('No authorization code received from Zoho', 'error')
         return redirect(url_for('main.settings'))
     
@@ -305,78 +389,6 @@ def zoho_callback():
         flash('Failed to connect to Zoho. Please try again.', 'error')
     
     return redirect(url_for('main.settings'))
-
-@auth_bp.route('/zoho/logout')
-@login_required
-def zoho_logout():
-    """Logout from Zoho."""
-    if not current_user.is_authenticated:
-        flash('Please log in first', 'error')
-        return redirect(url_for('auth.login'))
-        
-    try:
-        user = current_user._get_current_object()
-        if not isinstance(user, User):
-            flash('Invalid user session', 'error')
-            return redirect(url_for('auth.login'))
-            
-        zoho_service = ZohoService(user)
-        if zoho_service.logout():
-            flash('Successfully disconnected from Zoho', 'success')
-        else:
-            flash('Error disconnecting from Zoho', 'error')
-    except Exception as e:
-        current_app.logger.error(f"Error in Zoho logout: {str(e)}")
-        flash('Error disconnecting from Zoho', 'error')
-    
-    return redirect(url_for('main.settings'))
-
-@auth_bp.route('/zoho/auth')
-@login_required
-def zoho_auth():
-    """Initiate Zoho OAuth flow."""
-    if not current_user.is_authenticated:
-        flash('Please log in first', 'error')
-        return redirect(url_for('auth.login'))
-        
-    if not current_user.zoho_client_id or not current_user.zoho_client_secret:
-        flash('Please configure your Zoho client credentials in Settings first.', 'error')
-        return redirect(url_for('main.settings'))
-        
-    user = current_user._get_current_object()
-    if not isinstance(user, User):
-        flash('Invalid user session', 'error')
-        return redirect(url_for('auth.login'))
-        
-    zoho_service = ZohoService(user)
-    auth_url = zoho_service.get_auth_url()
-    return redirect(auth_url)
-
-def generate_password_reset_token(user: User) -> str:
-    """Generate a password reset token."""
-    return jwt.encode(
-        {
-            'user_id': user.id,
-            'exp': datetime.utcnow() + timedelta(hours=1)
-        },
-        current_app.config['SECRET_KEY'],
-        algorithm='HS256'
-    )
-
-def verify_password_reset_token(token: str, invalidate: bool = True) -> Optional[User]:
-    """Verify a password reset token."""
-    try:
-        data = jwt.decode(
-            token,
-            current_app.config['SECRET_KEY'],
-            algorithms=['HS256']
-        )
-        user = User.query.get(data['user_id'])
-        if user and invalidate:
-            user.invalidate_reset_token()
-        return user
-    except:
-        return None
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
@@ -421,29 +433,6 @@ def forgot_password():
             
     return render_template('auth/forgot_password.html', form=form)
 
-@auth_bp.route('/reset_password_request', methods=['GET', 'POST'])
-def reset_password_request():
-    """Handle password reset request."""
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
-        
-    form = ResetPasswordRequestForm()
-    if form.validate_on_submit():
-        user = User.query.filter_by(email=form.email.data).first()
-        if user:
-            token = user.get_password_reset_token()
-            email_service = EmailService()
-            reset_url = url_for('auth.reset_password', token=token, _external=True)
-            if email_service.send_password_reset_email(user.email, reset_url):
-                flash('Check your email', 'info')
-                return redirect(url_for('auth.login'))
-            else:
-                flash('Error sending password reset email', 'error')
-        else:
-            flash('Check your email', 'info')  # Don't reveal if email exists
-            return redirect(url_for('auth.login'))
-    return render_template('auth/reset_password_request.html', title='Reset Password', form=form)
-
 @auth_bp.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """Reset password with token."""
@@ -482,10 +471,4 @@ def reset_password(token):
             flash(str(e), 'danger')
             return render_template('auth/reset_password.html', form=form, token=token)
             
-    return render_template('auth/reset_password.html', form=form, token=token)
-
-def send_verification_email(user):
-    """Send verification email to user."""
-    email_service = EmailService()
-    if not email_service.send_verification_email(user):
-        raise Exception("Failed to send verification email") 
+    return render_template('auth/reset_password.html', form=form, token=token) 

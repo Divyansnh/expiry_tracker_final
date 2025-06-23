@@ -37,8 +37,10 @@ class Config:
     # Security config
     MAX_LOGIN_ATTEMPTS = 5
     LOGIN_LOCKOUT_TIME = timedelta(minutes=15)
-    PASSWORD_RESET_EXPIRY = timedelta(hours=1)
-    EMAIL_VERIFICATION_EXPIRY = timedelta(hours=24)
+    LOGIN_LOCKOUT_DURATION = timedelta(minutes=15)  # Alias for compatibility
+    PASSWORD_RESET_EXPIRY = timedelta(minutes=15)
+    EMAIL_VERIFICATION_EXPIRY = timedelta(minutes=5)
+    VERIFICATION_CODE_EXPIRY = timedelta(minutes=5)
 
     # CORS config
     CORS_ORIGINS = ['http://localhost:5000', 'http://127.0.0.1:5000']
@@ -48,7 +50,7 @@ class Config:
 
     # File upload config
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'bmp', 'tiff', 'webp'}
     UPLOAD_FOLDER = 'app/static/uploads'
 
     # Logging config
@@ -56,26 +58,16 @@ class Config:
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     LOG_FILE = 'app.log'
 
-    # Cache config
-    CACHE_TYPE = 'simple'
-    CACHE_DEFAULT_TIMEOUT = 300
-
-    # Rate limiting
-    RATELIMIT_DEFAULT = "200 per day;50 per hour"
-    RATELIMIT_STORAGE_URL = "memory://"
-
     # Zoho config
     ZOHO_CLIENT_ID = os.environ.get('ZOHO_CLIENT_ID')
     ZOHO_CLIENT_SECRET = os.environ.get('ZOHO_CLIENT_SECRET')
     ZOHO_REDIRECT_URI = os.environ.get('ZOHO_REDIRECT_URI')
-    ZOHO_ACCESS_TOKEN_URL = "https://accounts.zoho.com/oauth/v2/token"
-    ZOHO_AUTHORIZE_URL = "https://accounts.zoho.com/oauth/v2/auth"
-    ZOHO_API_BASE_URL = "https://www.zohoapis.com/inventory/v1"
-
-    # Twilio config
-    TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
-    TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN')
-    TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER')
+    ZOHO_ACCESS_TOKEN_URL = "https://accounts.zoho.eu/oauth/v2/token"
+    ZOHO_AUTHORIZE_URL = "https://accounts.zoho.eu/oauth/v2/auth"
+    ZOHO_API_BASE_URL = "https://www.zohoapis.eu/inventory/v1"
+    ZOHO_ACCOUNTS_URL = "https://accounts.zoho.eu"
+    ZOHO_TOKEN_EXPIRY = timedelta(hours=1)
+    ZOHO_ORGANIZATION_ID = os.environ.get('ZOHO_ORGANIZATION_ID')
 
     # Notification config
     NOTIFICATION_EXPIRY_DAYS = 7
@@ -129,10 +121,29 @@ class Config:
     WTF_CSRF_ENABLED = False
     PRESERVE_CONTEXT_ON_EXCEPTION = False
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    SERVER_NAME = 'localhost'
     APPLICATION_ROOT = '/'
     PREFERRED_URL_SCHEME = 'http'
     MAX_COOKIE_SIZE = 4093
+
+    # APScheduler config
+    SCHEDULER_API_ENABLED = True
+    SCHEDULER_RUN = True
+    SCHEDULER_JOBS = []  # Jobs are now configured in app/__init__.py
+    SCHEDULER_TIMEZONE = "UTC"
+
+    # OAuth state management
+    OAUTH_STATES_DIR = 'oauth_states'
+
+    @staticmethod
+    def init_app(app):
+        """Initialize application with configuration."""
+        import os
+        from pathlib import Path
+        
+        # Create necessary directories
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        os.makedirs(app.config['OAUTH_STATES_DIR'], exist_ok=True)
+        os.makedirs(os.path.dirname(app.config['LOG_FILE']), exist_ok=True)
 
 class DevelopmentConfig(Config):
     """Development configuration."""
@@ -142,6 +153,9 @@ class DevelopmentConfig(Config):
     # Override required variables with development defaults
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key')  # Only in development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'postgresql://localhost/expiry_tracker_v2')
+    
+    # Fix server name for development
+    SERVER_NAME = None
     
     # Development session settings
     SESSION_TYPE = 'filesystem'
@@ -166,6 +180,10 @@ class DevelopmentConfig(Config):
     ZOHO_CLIENT_SECRET = os.environ.get('ZOHO_CLIENT_SECRET', 'dev-client-secret')
     ZOHO_REDIRECT_URI = os.environ.get('ZOHO_REDIRECT_URI', 'http://localhost:5000/auth/zoho/callback')
     ZOHO_ORGANIZATION_ID = os.environ.get('ZOHO_ORGANIZATION_ID', 'dev-org-id')
+    ZOHO_ACCESS_TOKEN_URL = "https://accounts.zoho.eu/oauth/v2/token"
+    ZOHO_AUTHORIZE_URL = "https://accounts.zoho.eu/oauth/v2/auth"
+    ZOHO_API_BASE_URL = "https://www.zohoapis.eu/inventory/v1"
+    ZOHO_ACCOUNTS_URL = "https://accounts.zoho.eu"
 
 class ProductionConfig(Config):
     """Production configuration."""
@@ -191,6 +209,10 @@ class ProductionConfig(Config):
     ZOHO_CLIENT_SECRET = os.environ['ZOHO_CLIENT_SECRET']  # Required in production
     ZOHO_REDIRECT_URI = os.environ['ZOHO_REDIRECT_URI']  # Required in production
     ZOHO_ORGANIZATION_ID = os.environ.get('ZOHO_ORGANIZATION_ID', '')
+    ZOHO_ACCESS_TOKEN_URL = "https://accounts.zoho.eu/oauth/v2/token"
+    ZOHO_AUTHORIZE_URL = "https://accounts.zoho.eu/oauth/v2/auth"
+    ZOHO_API_BASE_URL = "https://www.zohoapis.eu/inventory/v1"
+    ZOHO_ACCOUNTS_URL = "https://accounts.zoho.eu"
 
 class TestingConfig(Config):
     """Testing configuration."""
@@ -212,6 +234,10 @@ class TestingConfig(Config):
     ZOHO_CLIENT_SECRET = 'test-client-secret'
     ZOHO_REDIRECT_URI = 'http://localhost:5000/auth/zoho/callback'
     ZOHO_ORGANIZATION_ID = 'test-org-id'
+    ZOHO_ACCESS_TOKEN_URL = "https://accounts.zoho.eu/oauth/v2/token"
+    ZOHO_AUTHORIZE_URL = "https://accounts.zoho.eu/oauth/v2/auth"
+    ZOHO_API_BASE_URL = "https://www.zohoapis.eu/inventory/v1"
+    ZOHO_ACCOUNTS_URL = "https://accounts.zoho.eu"
 
 # Configuration dictionary
 config = {

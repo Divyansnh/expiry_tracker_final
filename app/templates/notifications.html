@@ -3,53 +3,168 @@
 {% block title %}Notifications - Expiry Tracker{% endblock %}
 
 {% block content %}
+<!-- Enhanced Notifications Page Layout -->
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
 <div class="container mx-auto px-4 py-8">
-    <div class="max-w-4xl mx-auto">
-        <div class="flex justify-between items-center mb-8">
+    <div class="max-w-4xl mx-auto" data-show-sent="{{ 'true' if show_sent else 'false' }}">
+            <!-- Header Section -->
+            <div class="mb-8">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                    <div class="mb-6 lg:mb-0">
+                        <div class="flex items-center space-x-3">
+                            <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg">
+                                <i class="fas fa-bell text-white text-xl"></i>
+                            </div>
+                            <div>
             <h1 class="text-3xl font-bold text-gray-900">Notifications</h1>
-            <div class="flex space-x-4">
-                <a href="{{ url_for('main.notifications', show_sent=not show_sent) }}" 
-                   class="bg-blue-500 text-white px-4 py-2 rounded">
-                    {% if show_sent %}Hide Sent Notifications{% else %}Show Sent Notifications{% endif %}
-                </a>
-                {% if notifications and not show_sent %}
-                    <button id="mark-all-read" class="text-sm text-blue-600 hover:text-blue-500">
-                        Mark All as Read
-                    </button>
-                {% endif %}
+                                <p class="text-gray-600 mt-1">Manage your email notifications and preferences</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
+                <button id="toggle-sent-notifications" 
+                                class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:from-blue-700 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-200">
+                            <i class="fas fa-eye mr-2"></i>
+                            <span id="toggle-button-text">Show Sent</span>
+                        </button>
+                        <button id="show-pending-notifications" 
+                                class="inline-flex items-center px-4 py-2 bg-yellow-600 text-white font-semibold rounded-lg shadow-lg hover:bg-yellow-700 transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-yellow-200">
+                            <i class="fas fa-clock mr-2"></i>
+                            Show Pending
+                        </button>
+                        <button id="show-all-notifications" 
+                                class="inline-flex items-center px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg shadow-lg hover:bg-gray-700 transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-gray-200">
+                            <i class="fas fa-list mr-2"></i>
+                            Show All
+                </button>
+                        <button id="mark-all-read" class="inline-flex items-center px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-lg hover:bg-green-700 transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-green-200" style="display: none;">
+                            <i class="fas fa-check-double mr-2"></i>
+                            Mark All Read
+                </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filter Section -->
+            <div class="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 md:space-x-4">
+                    <div class="flex-1">
+                        <div class="flex space-x-2 mb-3">
+                            <button id="search-mode-message" class="search-mode-btn px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-100 text-blue-700 border border-blue-200" data-mode="message">
+                                <i class="fas fa-comment mr-1"></i>Message
+                            </button>
+                            <button id="search-mode-date" class="search-mode-btn px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 text-gray-600 border border-gray-200" data-mode="date">
+                                <i class="fas fa-calendar mr-1"></i>Date
+                            </button>
+                        </div>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-search text-gray-400"></i>
+                            </div>
+                            <input type="text" id="search-notifications" 
+                                   class="block w-full pl-10 pr-12 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Search in notification messages...">
+                            <button id="clear-search" 
+                                    class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                                    style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div id="search-help" class="mt-2 text-xs text-gray-500">
+                            <span id="search-help-text">Search for any text in notification messages</span>
+                        </div>
+                        <div id="search-validation" class="mt-2 text-xs" style="display: none;">
+                            <span id="search-validation-text"></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-sm text-gray-500" id="search-results-count"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6" id="stats-cards-container">
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300" id="total-notifications-card">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-bell text-blue-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total Notifications</p>
+                            <p class="text-2xl font-bold text-gray-900" id="totalNotifications">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300" id="pending-notifications-card">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clock text-yellow-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Pending</p>
+                            <p class="text-2xl font-bold text-gray-900" id="pendingNotifications">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300" id="sent-notifications-card">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-check text-green-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Sent</p>
+                            <p class="text-2xl font-bold text-gray-900" id="sentNotifications">-</p>
+                        </div>
+                    </div>
             </div>
         </div>
 
-        {% if notifications %}
-            <div class="space-y-4">
-                {% for notification in notifications %}
-                    <div class="bg-white rounded-lg shadow p-6 notification-item" data-status="{{ notification.status }}">
-                        <div class="flex items-start">
-                            <div class="flex-shrink-0">
-                                <span class="text-blue-500 text-2xl">📧</span>
-                            </div>
-                            <div class="ml-4 flex-1">
-                                <p class="text-sm text-gray-900">{{ notification.message }}</p>
-                                <p class="text-xs text-gray-500 mt-1">{{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    Email Notification
-                                </p>
-                            </div>
-                            {% if notification.status == 'pending' %}
-                                <button class="mark-as-read ml-4 text-sm text-blue-600 hover:text-blue-500" 
-                                        data-notification-id="{{ notification.id }}">
-                                    Mark as Sent
-                                </button>
-                            {% endif %}
-                        </div>
+        <!-- Loading state -->
+            <div id="loading-state" class="bg-white rounded-xl shadow-lg p-8 text-center border border-gray-100">
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-spinner fa-spin text-blue-600 text-xl"></i>
                     </div>
-                {% endfor %}
+                    <p class="text-gray-600 font-medium">Loading notifications...</p>
+                </div>
+        </div>
+
+        <!-- Notifications container -->
+        <div id="notifications-container" class="space-y-4" style="display: none;">
+            <!-- Notifications will be loaded here via API -->
             </div>
-        {% else %}
-            <div class="bg-white rounded-lg shadow p-6 text-center">
-                <p class="text-gray-500">No notifications to display.</p>
+            
+            <!-- Pagination Controls -->
+            <div id="pagination-container" class="mt-6 flex justify-center" style="display: none;">
+                <nav class="flex items-center space-x-2">
+                    <button id="prev-page" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-left mr-2"></i>
+                        Previous
+                    </button>
+                    
+                    <div class="flex items-center space-x-1">
+                        <span class="text-sm text-gray-700">Page</span>
+                        <span id="current-page" class="text-sm font-medium text-gray-900">1</span>
+                        <span class="text-sm text-gray-700">of</span>
+                        <span id="total-pages" class="text-sm font-medium text-gray-900">1</span>
+                    </div>
+                    
+                    <button id="next-page" class="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Next
+                        <i class="fas fa-chevron-right ml-2"></i>
+                    </button>
+                </nav>
             </div>
-        {% endif %}
+        </div>
     </div>
 </div>
 
@@ -57,48 +172,86 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Get CSRF token from meta tag
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    console.log('CSRF Token retrieved:', csrfToken ? 'Yes' : 'No');
     
-    // Mark single notification as read
-    document.querySelectorAll('.mark-as-read').forEach(button => {
-        button.addEventListener('click', function() {
-            const notificationId = this.dataset.notificationId;
-            fetch(`/api/v1/notifications/${notificationId}/read`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({})  // Send empty JSON object
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.message) {
-                    const notificationDiv = this.closest('.bg-white');
-                    this.remove();
-                    location.reload(); // Refresh to update status
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to mark notification as read. Please try again.');
-            });
+    // Track current state
+    const container = document.querySelector('.max-w-4xl');
+    let currentShowSent = container.dataset.showSent === 'true';
+    let currentFilter = currentShowSent ? 'sent' : 'all';
+    let currentPage = 1;
+    let totalPages = 1;
+    let perPage = 20;
+    let searchTerm = '';
+    let searchTimeout = null;
+    let currentSearchMode = 'message'; // Default search mode
+    console.log('Initial show_sent state:', currentShowSent);
+    
+    // Load notifications on page load
+    loadNotificationsWithFilter(currentShowSent ? 'sent' : 'all');
+    
+    // Pagination event listeners
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                loadNotificationsWithFilter(currentFilter, currentPage);
+            }
         });
-    });
-
-    // Mark all notifications as read
+    }
+    
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', function() {
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadNotificationsWithFilter(currentFilter, currentPage);
+            }
+        });
+    }
+    
+    // Show sent notifications
+    const toggleButton = document.getElementById('toggle-sent-notifications');
+    if (toggleButton) {
+        toggleButton.addEventListener('click', function() {
+            console.log('Showing sent notifications');
+            loadNotificationsWithFilter('sent');
+            updateButtonStates('sent');
+        });
+    }
+    
+    // Show pending notifications
+    const showPendingButton = document.getElementById('show-pending-notifications');
+    if (showPendingButton) {
+        showPendingButton.addEventListener('click', function() {
+            console.log('Showing pending notifications');
+            loadNotificationsWithFilter('pending');
+            updateButtonStates('pending');
+        });
+    }
+    
+    // Show all notifications
+    const showAllButton = document.getElementById('show-all-notifications');
+    if (showAllButton) {
+        showAllButton.addEventListener('click', function() {
+            console.log('Showing all notifications');
+            loadNotificationsWithFilter('all');
+            updateButtonStates('all');
+        });
+    }
+    
+    // Mark all as read button
     const markAllReadButton = document.getElementById('mark-all-read');
     if (markAllReadButton) {
         markAllReadButton.addEventListener('click', function() {
             fetch('/api/v1/notifications/read-all', {
                 method: 'PUT',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
-                }
+                },
+                body: JSON.stringify({})
             })
             .then(response => {
                 if (!response.ok) {
@@ -107,22 +260,995 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                if (data.message) {
-                    // Hide the mark all as read button
-                    this.style.display = 'none';
-                    // Show success message
-                    alert('All notifications have been marked as read');
-                    // Refresh the page
-                    location.reload();
-                } else {
-                    throw new Error('Failed to mark notifications as read');
-                }
+                console.log('Mark all as read response:', data);
+                // Reload notifications to reflect the changes
+                loadNotifications(currentShowSent);
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to mark all notifications as read. Please try again.');
+                console.error('Error marking all as read:', error);
+                alert('Failed to mark all notifications as read');
             });
         });
+    }
+    
+    // Search functionality
+    const searchInput = document.getElementById('search-notifications');
+    const clearSearchBtn = document.getElementById('clear-search');
+    const searchResultsCount = document.getElementById('search-results-count');
+    
+    // Search mode configuration
+    const searchModes = {
+        message: {
+            placeholder: 'Search by message content...',
+            maxLength: 100,
+            pattern: /^[a-zA-Z0-9\s\-_.,!?@#$%^&*()+=:;"'<>[\]{}|\\/~`]+$/,
+            helpText: 'Search notifications by message content'
+        },
+        date: {
+            placeholder: 'Enter date (YYYY or YYYY-MM-DD)...',
+            maxLength: 10,
+            helpText: 'Search by creation date',
+            validate: function(value) {
+                // Helper function to check if year is leap year
+                function isLeapYear(year) {
+                    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+                }
+                
+                // Helper function to get days in month
+                function getDaysInMonth(year, month) {
+                    const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                    if (month === 2 && isLeapYear(year)) {
+                        return 29;
+                    }
+                    return monthDays[month - 1];
+                }
+                
+                // Year only format (YYYY)
+                if (/^\d{4}$/.test(value)) {
+                    const year = parseInt(value);
+                    if (year < 1900 || year > 2100) {
+                        return year < 1900 ? 'year_too_old' : 'year_too_new';
+                    }
+                    return true;
+                }
+                
+                // Complete date format (YYYY-MM-DD)
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                    const parts = value.split('-');
+                    const year = parseInt(parts[0]);
+                    const month = parseInt(parts[1]);
+                    const day = parseInt(parts[2]);
+                    
+                    // Check year range
+                    if (year < 1900 || year > 2100) {
+                        return year < 1900 ? 'year_too_old' : 'year_too_new';
+                    }
+                    
+                    // Check month range
+                    if (month < 1 || month > 12) {
+                        return 'invalid_month';
+                    }
+                    
+                    // Check day range based on actual month length
+                    const maxDays = getDaysInMonth(year, month);
+                    if (day < 1 || day > maxDays) {
+                        // Special case for February 29th in non-leap years
+                        if (month === 2 && day === 29 && !isLeapYear(year)) {
+                            return 'february_29_non_leap';
+                        }
+                        // Special case for day 31 in 30-day months
+                        if (day === 31 && maxDays === 30) {
+                            return 'day_31_30_day_month';
+                        }
+                        return 'invalid_date';
+                    }
+                    
+                    return true;
+                }
+                
+                // Partial input
+                return 'partial';
+            },
+            validateInput: function(value, previousValue) {
+                // If empty, allow
+                if (!value) return true;
+                
+                // Allow valid patterns
+                if (/^\d{1,4}$/.test(value)) return true; // 1-4 digits (year)
+                if (/^\d{4}-$/.test(value)) return true; // year with hyphen
+                if (/^\d{4}-\d{1,2}$/.test(value)) return true; // year-month (1-2 digits)
+                if (/^\d{4}-\d{2}-$/.test(value)) return true; // year-month with hyphen
+                if (/^\d{4}-\d{2}-\d{1,2}$/.test(value)) return true; // year-month-day
+                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return true; // complete date
+                
+                // Check if user is trying to add invalid characters
+                if (previousValue && value.length > previousValue.length) {
+                    const addedChar = value.charAt(previousValue.length);
+                    
+                    // If previous value was a complete date, block any additional input
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(previousValue)) {
+                        return 'date_complete';
+                    }
+                    
+                    // After 4-digit year, only hyphen is allowed
+                    if (/^\d{4}$/.test(previousValue) && addedChar !== '-') {
+                        return 'only_hyphen_after_year';
+                    }
+                    
+                    // After hyphen, only valid first month digit (0 or 1) is allowed
+                    if (/^\d{4}-$/.test(previousValue)) {
+                        if (!/\d/.test(addedChar)) {
+                            return 'only_digits_after_hyphen';
+                        }
+                        if (addedChar !== '0' && addedChar !== '1') {
+                            return 'invalid_first_month_digit';
+                        }
+                    }
+                    
+                    // After 1 digit month, validate second digit based on first digit
+                    if (/^\d{4}-\d{1}$/.test(previousValue)) {
+                        if (!/\d/.test(addedChar)) {
+                            return 'only_digits_for_month';
+                        }
+                        
+                        const firstMonthDigit = previousValue.charAt(5); // Get the first month digit
+                        if (firstMonthDigit === '0') {
+                            // If first digit is 0, second digit must be 1-9
+                            if (addedChar === '0') {
+                                return 'invalid_second_month_digit';
+                            }
+                        } else if (firstMonthDigit === '1') {
+                            // If first digit is 1, second digit must be 0-2
+                            if (addedChar !== '0' && addedChar !== '1' && addedChar !== '2') {
+                                return 'invalid_second_month_digit';
+                            }
+                        }
+                    }
+                    
+                    // After 2-digit month, only hyphen is allowed
+                    if (/^\d{4}-\d{2}$/.test(previousValue) && addedChar !== '-') {
+                        return 'only_hyphen_after_month';
+                    }
+                    
+                    // After second hyphen, only digits are allowed
+                    if (/^\d{4}-\d{2}-$/.test(previousValue) && !/\d/.test(addedChar)) {
+                        return 'only_digits_after_second_hyphen';
+                    }
+                }
+                
+                // If we get here, it's an invalid pattern
+                return 'invalid_format';
+            }
+        }
+    };
+    
+    // Search mode switching
+    document.querySelectorAll('.search-mode-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const mode = this.getAttribute('data-mode');
+            switchSearchMode(mode);
+        });
+    });
+    
+    function switchSearchMode(mode) {
+        // Update active button
+        document.querySelectorAll('.search-mode-btn').forEach(btn => {
+            btn.classList.remove('bg-blue-100', 'text-blue-700', 'border-blue-200');
+            btn.classList.add('bg-gray-100', 'text-gray-600', 'border-gray-200');
+        });
+        
+        const activeBtn = document.querySelector(`[data-mode="${mode}"]`);
+        if (activeBtn) {
+            activeBtn.classList.remove('bg-gray-100', 'text-gray-600', 'border-gray-200');
+            activeBtn.classList.add('bg-blue-100', 'text-blue-700', 'border-blue-200');
+        }
+        
+        // Update search input
+        const modeConfig = searchModes[mode];
+        searchInput.placeholder = modeConfig.placeholder;
+        searchInput.maxLength = modeConfig.maxLength;
+        
+        // Update help text
+        const helpText = document.getElementById('search-help-text');
+        if (helpText) {
+            helpText.textContent = modeConfig.helpText;
+        }
+        
+        // Update validation message for date mode
+        const validationDiv = document.getElementById('search-validation');
+        const validationText = document.getElementById('search-validation-text');
+        
+        if (mode === 'date') {
+            validationDiv.style.display = 'block';
+            validationDiv.className = 'mt-2 text-xs bg-yellow-50 border border-yellow-200 rounded-lg p-2';
+            validationText.innerHTML = '<i class="fas fa-info-circle text-yellow-600 mr-1"></i><span class="text-yellow-800 font-medium">Valid formats:</span> <span class="text-yellow-700">YYYY (e.g., 2024) or YYYY-MM-DD (e.g., 2024-12-25)</span>';
+        } else {
+            validationDiv.style.display = 'none';
+        }
+        
+        // Clear current search if mode changes
+        if (currentSearchMode !== mode) {
+            clearSearch();
+        }
+        
+        currentSearchMode = mode;
+    }
+    
+    if (searchInput) {
+        // Add keydown event for date mode to prevent invalid characters
+        searchInput.addEventListener('keydown', function(e) {
+            if (currentSearchMode === 'date') {
+                const currentValue = this.value;
+                const cursorPosition = this.selectionStart;
+                
+                // Allow navigation keys, backspace, delete, etc.
+                if (e.key.length > 1 || e.ctrlKey || e.metaKey) {
+                    return;
+                }
+                
+                // Prevent non-digit characters except hyphen
+                if (!/\d/.test(e.key) && e.key !== '-') {
+                    e.preventDefault();
+                    return;
+                }
+                
+                // Special validation for date format
+                if (e.key === '-') {
+                    // Only allow hyphen after 4-digit year or 2-digit month
+                    if (!(/^\d{4}$/.test(currentValue) || /^\d{4}-\d{2}$/.test(currentValue))) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                
+                // Validate month digits
+                if (/\d/.test(e.key)) {
+                    // After complete 4-digit year (e.g., "2024"), only hyphen is allowed
+                    if (/^\d{4}$/.test(currentValue)) {
+                        e.preventDefault();
+                        return;
+                    }
+                    
+                    // After year and hyphen (e.g., "2024-")
+                    if (/^\d{4}-$/.test(currentValue)) {
+                        // Only allow 0 or 1 as first month digit
+                        if (e.key !== '0' && e.key !== '1') {
+                            e.preventDefault();
+                            return;
+                        }
+                    }
+                    
+                    // After first month digit (e.g., "2024-0" or "2024-1")
+                    if (/^\d{4}-\d{1}$/.test(currentValue)) {
+                        const firstMonthDigit = currentValue.charAt(5);
+                        if (firstMonthDigit === '0') {
+                            // If first digit is 0, second digit must be 1-9
+                            if (e.key === '0') {
+                                e.preventDefault();
+                                return;
+                            }
+                        } else if (firstMonthDigit === '1') {
+                            // If first digit is 1, second digit must be 0-2
+                            if (e.key !== '0' && e.key !== '1' && e.key !== '2') {
+                                e.preventDefault();
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // After complete 2-digit month (e.g., "2024-12"), only hyphen is allowed
+                    if (/^\d{4}-\d{2}$/.test(currentValue)) {
+                        e.preventDefault();
+                        return;
+                    }
+                    
+                    // After month and hyphen (e.g., "2024-12-")
+                    if (/^\d{4}-\d{2}-$/.test(currentValue)) {
+                        const year = parseInt(currentValue.substring(0, 4));
+                        const month = parseInt(currentValue.substring(5, 7));
+                        
+                        // Helper function to check if year is leap year
+                        function isLeapYear(year) {
+                            return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+                        }
+                        
+                        // Helper function to get days in month
+                        function getDaysInMonth(year, month) {
+                            const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                            if (month === 2 && isLeapYear(year)) {
+                                return 29;
+                            }
+                            return monthDays[month - 1];
+                        }
+                        
+                        const maxDays = getDaysInMonth(year, month);
+                        
+                        // Only allow first day digits that are valid for this month
+                        if (maxDays < 30 && e.key === '3') {
+                            e.preventDefault();
+                            return;
+                        }
+                        if (maxDays < 20 && (e.key === '2' || e.key === '3')) {
+                            e.preventDefault();
+                            return;
+                        }
+                        if (maxDays < 10 && (e.key === '1' || e.key === '2' || e.key === '3')) {
+                            e.preventDefault();
+                            return;
+                        }
+                        
+                        // Only allow 0-3 as first day digit (since days can be 01-31)
+                        if (e.key !== '0' && e.key !== '1' && e.key !== '2' && e.key !== '3') {
+                            e.preventDefault();
+                            return;
+                        }
+                    }
+                    
+                    // After first day digit (e.g., "2024-12-0", "2024-12-1", "2024-12-2", "2024-12-3")
+                    if (/^\d{4}-\d{2}-\d{1}$/.test(currentValue)) {
+                        const year = parseInt(currentValue.substring(0, 4));
+                        const month = parseInt(currentValue.substring(5, 7));
+                        const firstDayDigit = currentValue.charAt(8); // Get the first day digit
+                        
+                        // Helper function to check if year is leap year
+                        function isLeapYear(year) {
+                            return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+                        }
+                        
+                        // Helper function to get days in month
+                        function getDaysInMonth(year, month) {
+                            const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                            if (month === 2 && isLeapYear(year)) {
+                                return 29;
+                            }
+                            return monthDays[month - 1];
+                        }
+                        
+                        const maxDays = getDaysInMonth(year, month);
+                        
+                        if (firstDayDigit === '0') {
+                            // If first digit is 0, second digit must be 1-9
+                            if (e.key === '0') {
+                                e.preventDefault();
+                                return;
+                            }
+                        } else if (firstDayDigit === '1') {
+                            // If first digit is 1, second digit must be 0-9
+                            // No restrictions needed, all digits 0-9 are valid
+                        } else if (firstDayDigit === '2') {
+                            // If first digit is 2, check if 2x is valid for this month
+                            if (maxDays < 20) {
+                                e.preventDefault();
+                                return;
+                            }
+                        } else if (firstDayDigit === '3') {
+                            // If first digit is 3, check if 3x is valid for this month
+                            if (maxDays < 30) {
+                                e.preventDefault();
+                                return;
+                            }
+                            // For months with 30 days, only 0 is allowed as second digit
+                            if (maxDays === 30 && e.key !== '0') {
+                                e.preventDefault();
+                                return;
+                            }
+                            // For months with 31 days, only 0-1 are allowed as second digit
+                            if (maxDays === 31 && e.key !== '0' && e.key !== '1') {
+                                e.preventDefault();
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        searchInput.addEventListener('input', function() {
+            const newSearchTerm = this.value.trim();
+            
+            // Validate input based on current mode
+            const modeConfig = searchModes[currentSearchMode];
+            if (newSearchTerm) {
+                let isValid = false;
+                
+                if (currentSearchMode === 'date') {
+                    // For date mode, use strict character validation
+                    if (modeConfig.validateInput) {
+                        const validationResult = modeConfig.validateInput(newSearchTerm, searchTerm);
+                        if (validationResult !== true) {
+                            // Invalid character - revert to last valid state
+                            this.value = searchTerm;
+                            
+                            // Show specific error message
+                            const validationDiv = document.getElementById('search-validation');
+                            const validationText = document.getElementById('search-validation-text');
+                            
+                            if (validationDiv && validationText) {
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                
+                                let errorMessage = '';
+                                switch (validationResult) {
+                                    case 'date_complete':
+                                        errorMessage = 'Date is complete. No more characters allowed';
+                                        break;
+                                    case 'only_hyphen_after_year':
+                                        errorMessage = 'Only hyphen (-) is allowed after the year';
+                                        break;
+                                    case 'only_digits_after_hyphen':
+                                        errorMessage = 'Only digits are allowed after hyphen';
+                                        break;
+                                    case 'invalid_first_month_digit':
+                                        errorMessage = 'Month must start with 0 or 1 (e.g., 01, 02, 10, 11, 12)';
+                                        break;
+                                    case 'only_digits_for_month':
+                                        errorMessage = 'Month must be 2 digits (e.g., 01, 02, 12)';
+                                        break;
+                                    case 'invalid_second_month_digit':
+                                        errorMessage = 'Invalid month combination (e.g., 00, 13, 14, etc.)';
+                                        break;
+                                    case 'only_hyphen_after_month':
+                                        errorMessage = 'Only hyphen (-) is allowed after the month';
+                                        break;
+                                    case 'only_digits_after_second_hyphen':
+                                        errorMessage = 'Only digits are allowed after the second hyphen';
+                                        break;
+                                    default:
+                                        errorMessage = 'Invalid character';
+                                }
+                                
+                                validationText.innerHTML = `<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Invalid input:</span> <span class="text-red-700">${errorMessage}</span>`;
+                            }
+                            return;
+                        }
+                    }
+                    
+                    // If we get here, the input is valid for date mode
+                    isValid = true;
+                    
+                    // Show validation feedback for date mode
+                    const validationDiv = document.getElementById('search-validation');
+                    const validationText = document.getElementById('search-validation-text');
+                    
+                    if (validationDiv && validationText) {
+                        if (newSearchTerm.length > 0) {
+                            const validationResult = modeConfig.validate(newSearchTerm);
+                            if (validationResult === true) {
+                                // Valid complete format
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-green-50 border border-green-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-check-circle text-green-600 mr-1"></i><span class="text-green-800 font-medium">Valid format:</span> <span class="text-green-700">Ready to search</span>';
+                            } else if (validationResult === 'partial') {
+                                // Partial input - show info message
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-yellow-50 border border-yellow-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-info-circle text-yellow-600 mr-1"></i><span class="text-yellow-800 font-medium">Valid formats:</span> <span class="text-yellow-700">YYYY (e.g., 2024) or YYYY-MM-DD (e.g., 2024-12-25)</span>';
+                            } else if (validationResult === 'year_too_old') {
+                                // Year too old
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Year too old:</span> <span class="text-red-700">Please use a year between 1900 and 2100</span>';
+                            } else if (validationResult === 'year_too_new') {
+                                // Year too new
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Year too new:</span> <span class="text-red-700">Please use a year between 1900 and 2100</span>';
+                            } else if (validationResult === 'invalid_month') {
+                                // Invalid month
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Invalid month:</span> <span class="text-red-700">Please use a month between 01 and 12</span>';
+                            } else if (validationResult === 'invalid_date') {
+                                // Invalid date
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Invalid date:</span> <span class="text-red-700">Please use a valid date format (e.g., 2024-12-25)</span>';
+                            } else if (validationResult === 'february_29_non_leap') {
+                                // February 29th in non-leap year
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Leap year error:</span> <span class="text-red-700">February 29th only exists in leap years</span>';
+                            } else if (validationResult === 'day_31_30_day_month') {
+                                // Day 31 in 30-day month
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Invalid day:</span> <span class="text-red-700">This month only has 30 days (April, June, September, November)</span>';
+                            } else {
+                                // Generic invalid format
+                                validationDiv.style.display = 'block';
+                                validationDiv.className = 'mt-2 text-xs bg-red-50 border border-red-200 rounded-lg p-2';
+                                validationText.innerHTML = '<i class="fas fa-exclamation-triangle text-red-600 mr-1"></i><span class="text-red-800 font-medium">Invalid format:</span> <span class="text-red-700">Use YYYY (e.g., 2024) or YYYY-MM-DD (e.g., 2024-12-25)</span>';
+                            }
+                        } else {
+                            validationDiv.style.display = 'none';
+                        }
+                    }
+                } else {
+                    isValid = modeConfig.pattern.test(newSearchTerm);
+                }
+                
+                if (!isValid) {
+                    // Invalid input - revert to last valid state
+                    this.value = searchTerm;
+                    return;
+                }
+            } else {
+                // Clear validation message when input is empty
+                const validationDiv = document.getElementById('search-validation');
+                if (validationDiv && currentSearchMode === 'date') {
+                    validationDiv.style.display = 'none';
+                }
+            }
+            
+            // Clear previous timeout
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            
+            // Show/hide clear button
+            if (clearSearchBtn) {
+                clearSearchBtn.style.display = newSearchTerm ? 'flex' : 'none';
+            }
+            
+            // Debounce search to avoid too many API calls
+            searchTimeout = setTimeout(() => {
+                // Final validation for date mode before searching
+                if (currentSearchMode === 'date' && newSearchTerm) {
+                    const modeConfig = searchModes[currentSearchMode];
+                    const validationResult = modeConfig.validate(newSearchTerm);
+                    if (validationResult !== true) {
+                        // Invalid or partial date format - don't search
+                        console.log('Invalid or incomplete date format:', newSearchTerm);
+                        return;
+                    }
+                }
+                
+                searchTerm = newSearchTerm;
+                currentPage = 1; // Reset to first page when searching
+                loadNotificationsWithFilter(currentFilter, currentPage);
+            }, 300);
+        });
+        
+        // Handle Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+                
+                const searchValue = this.value.trim();
+                
+                // Final validation for date mode before searching
+                if (currentSearchMode === 'date' && searchValue) {
+                    const modeConfig = searchModes[currentSearchMode];
+                    const validationResult = modeConfig.validate(searchValue);
+                    if (validationResult !== true) {
+                        // Invalid or partial date format - don't search
+                        console.log('Invalid or incomplete date format:', searchValue);
+                        return;
+                    }
+                }
+                
+                searchTerm = searchValue;
+                currentPage = 1;
+                loadNotificationsWithFilter(currentFilter, currentPage);
+            }
+        });
+    }
+    
+    // Clear search functionality
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchTerm = '';
+            this.style.display = 'none';
+            currentPage = 1;
+            loadNotificationsWithFilter(currentFilter, currentPage);
+        });
+    }
+    
+    // Function to load notifications with filter
+    function loadNotificationsWithFilter(filter, page = 1) {
+        const loadingState = document.getElementById('loading-state');
+        const notificationsContainer = document.getElementById('notifications-container');
+        
+        // Clear search when switching filters (but not when changing pages)
+        if (filter !== currentFilter) {
+            clearSearch();
+            currentPage = 1;
+        } else {
+            currentPage = page;
+        }
+        
+        // Show loading state
+        loadingState.style.display = 'block';
+        notificationsContainer.style.display = 'none';
+        
+        // Build API URL with search parameter
+        let apiUrl = `/api/v1/notifications?filter=${filter}&page=${currentPage}&per_page=${perPage}`;
+        if (searchTerm) {
+            apiUrl += `&search=${encodeURIComponent(searchTerm)}&search_mode=${currentSearchMode}`;
+        }
+        
+        console.log('Making API call with filter:', filter, 'page:', currentPage, 'search:', searchTerm);
+        
+        fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            if (!response.ok) {
+                console.error('Response not ok, status:', response.status);
+                throw new Error(`Network response was not ok: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received data:', data);
+            console.log('Notifications count:', data.notifications ? data.notifications.length : 'undefined');
+            console.log('Stats:', data.stats);
+            console.log('Pagination:', data.pagination);
+            
+            if (!data.notifications) {
+                throw new Error('No notifications data received');
+            }
+            
+            // Update the notifications list
+            updateNotificationsList(data.notifications, filter);
+            // Update stats with the new data
+            if (data.stats) {
+                updateNotificationStatsFromAPI(data.stats);
+            }
+            // Update stats cards visibility
+            updateStatsCardsVisibility(filter);
+            // Update pagination controls
+            if (data.pagination) {
+                updatePaginationControls(data.pagination);
+            }
+            // Update current state
+            currentFilter = filter;
+        })
+        .catch(error => {
+            console.error('Error details:', error);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+            loadingState.innerHTML = `
+                <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                    </div>
+                    <p class="text-red-600 font-medium">Failed to load notifications: ${error.message}</p>
+                    <button onclick="loadNotificationsWithFilter('${filter}')" class="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-refresh mr-2"></i>
+                        Retry
+                    </button>
+                </div>
+            `;
+        });
+    }
+    
+    // Function to load notifications (legacy function for backward compatibility)
+    function loadNotifications(showSent) {
+        const filter = showSent ? 'sent' : 'pending';
+        loadNotificationsWithFilter(filter);
+    }
+    
+    // Function to update notifications list
+    function updateNotificationsList(notifications, filter) {
+        const loadingState = document.getElementById('loading-state');
+        const notificationsContainer = document.getElementById('notifications-container');
+        const markAllReadButton = document.getElementById('mark-all-read');
+        const searchResultsCount = document.getElementById('search-results-count');
+        
+        console.log('updateNotificationsList called with:', { notifications: notifications.length, filter: filter, searchTerm: searchTerm });
+        
+        // Hide loading state
+        loadingState.style.display = 'none';
+        notificationsContainer.style.display = 'block';
+        
+        // Update search results count
+        if (searchResultsCount) {
+            if (searchTerm) {
+                const modeNames = {
+                    'message': 'message',
+                    'date': 'date'
+                };
+                const modeName = modeNames[currentSearchMode] || 'message';
+                searchResultsCount.textContent = `${notifications.length} result${notifications.length !== 1 ? 's' : ''} found in ${modeName}`;
+            } else {
+                searchResultsCount.textContent = '';
+            }
+        }
+        
+        // Update stats
+        updateNotificationStats(notifications);
+        
+        if (notifications.length === 0) {
+            const modeNames = {
+                'message': 'message',
+                'date': 'date'
+            };
+            const modeName = modeNames[currentSearchMode] || 'message';
+            
+            const message = searchTerm 
+                ? `No notifications found matching "${searchTerm}" in ${modeName}`
+                : `No ${filter} notifications to display.`;
+            
+            notificationsContainer.innerHTML = `
+                <div class="bg-white rounded-xl shadow-lg p-8 text-center border border-gray-100">
+                    <div class="flex flex-col items-center">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <i class="fas fa-bell-slash text-gray-400 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No notifications found</h3>
+                        <p class="text-gray-600 mb-4">${message}</p>
+                        <button onclick="loadNotificationsWithFilter('${filter}')" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <i class="fas fa-refresh mr-2"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            `;
+            if (markAllReadButton) {
+                markAllReadButton.style.display = 'none';
+            }
+            return;
+        }
+        
+        let notificationsHtml = '';
+        notifications.forEach(notification => {
+            const createdDate = new Date(notification.created_at);
+            const formattedDate = createdDate.toLocaleDateString('en-GB', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            const isPending = notification.status === 'pending';
+            
+            // Status badge
+            const statusBadge = isPending 
+                ? '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><i class="fas fa-clock mr-1"></i>Pending</span>'
+                : '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><i class="fas fa-check mr-1"></i>Sent</span>';
+            
+            notificationsHtml += `
+                <div class="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-all duration-200 notification-item" data-status="${notification.status}">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start space-x-4">
+                        <div class="flex-shrink-0">
+                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-envelope text-blue-600"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2 mb-2">
+                                    ${statusBadge}
+                                    <span class="text-xs text-gray-500">•</span>
+                                    <span class="text-xs text-gray-500">${formattedDate}</span>
+                        </div>
+                                <p class="text-sm text-gray-900 leading-relaxed">${notification.message}</p>
+                                <p class="text-xs text-gray-500 mt-2">
+                                    <i class="fas fa-envelope mr-1"></i>
+                                Email Notification
+                            </p>
+                            </div>
+                        </div>
+                        ${isPending ? `
+                            <button class="mark-as-read inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors duration-150 text-sm font-medium" 
+                                    data-notification-id="${notification.id}">
+                                <i class="fas fa-check mr-1.5"></i>
+                                Mark Sent
+                            </button>
+                        ` : `
+                            <div class="flex items-center text-green-600">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                <span class="text-sm font-medium">Sent</span>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        });
+        
+        notificationsContainer.innerHTML = notificationsHtml;
+        
+        // Show/hide mark all read button based on whether there are pending notifications
+        if (markAllReadButton) {
+            const hasPendingNotifications = notifications.some(n => n.status === 'pending');
+            markAllReadButton.style.display = hasPendingNotifications ? 'block' : 'none';
+        }
+        
+        // Re-attach event listeners for mark as read buttons
+        attachMarkAsReadListeners();
+    }
+    
+    // Function to update notification stats
+    function updateNotificationStats(notifications) {
+        const total = notifications.length;
+        const pending = notifications.filter(n => n.status === 'pending').length;
+        const sent = notifications.filter(n => n.status === 'sent').length;
+        
+        document.getElementById('totalNotifications').textContent = total;
+        document.getElementById('pendingNotifications').textContent = pending;
+        document.getElementById('sentNotifications').textContent = sent;
+    }
+    
+    // Function to update notification stats from API data
+    function updateNotificationStatsFromAPI(stats) {
+        document.getElementById('totalNotifications').textContent = stats.total_all;
+        document.getElementById('pendingNotifications').textContent = stats.total_pending;
+        document.getElementById('sentNotifications').textContent = stats.total_sent;
+    }
+    
+    // Function to show/hide stats cards based on filter
+    function updateStatsCardsVisibility(filter) {
+        const totalCard = document.getElementById('total-notifications-card');
+        const pendingCard = document.getElementById('pending-notifications-card');
+        const sentCard = document.getElementById('sent-notifications-card');
+        const container = document.getElementById('stats-cards-container');
+        
+        // Hide all cards first
+        totalCard.style.display = 'none';
+        pendingCard.style.display = 'none';
+        sentCard.style.display = 'none';
+        
+        // Show relevant cards based on filter
+        if (filter === 'all') {
+            totalCard.style.display = 'block';
+            container.className = 'grid grid-cols-1 gap-6 mb-6';
+        } else if (filter === 'pending') {
+            pendingCard.style.display = 'block';
+            container.className = 'grid grid-cols-1 gap-6 mb-6';
+        } else if (filter === 'sent') {
+            sentCard.style.display = 'block';
+            container.className = 'grid grid-cols-1 gap-6 mb-6';
+        }
+    }
+    
+    // Function to attach mark as read event listeners
+    function attachMarkAsReadListeners() {
+        document.querySelectorAll('.mark-as-read').forEach(button => {
+            button.addEventListener('click', function() {
+                const notificationId = this.getAttribute('data-notification-id');
+                const button = this;
+                
+                // Disable button and show loading state
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5"></i>Marking...';
+                
+                fetch(`/api/v1/notifications/${notificationId}/read`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Mark as read response:', data);
+                    // Reload notifications to reflect the changes
+                    loadNotifications(currentShowSent);
+                })
+                .catch(error => {
+                    console.error('Error marking as read:', error);
+                    // Re-enable button and restore original text
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fas fa-check mr-1.5"></i>Mark Sent';
+                    alert('Failed to mark notification as read');
+                });
+            });
+        });
+    }
+
+    // Function to update button states based on current filter
+    function updateButtonStates(filter) {
+        const toggleButton = document.getElementById('toggle-sent-notifications');
+        const showPendingButton = document.getElementById('show-pending-notifications');
+        const showAllButton = document.getElementById('show-all-notifications');
+        
+        // Reset all buttons to default state
+        if (toggleButton) {
+            toggleButton.classList.remove('bg-blue-700', 'to-indigo-700', 'bg-gray-600', 'bg-yellow-600');
+            toggleButton.classList.add('bg-blue-600', 'to-indigo-600');
+        }
+        if (showPendingButton) {
+            showPendingButton.classList.remove('bg-yellow-700', 'bg-gray-600', 'bg-blue-600');
+            showPendingButton.classList.add('bg-yellow-600');
+        }
+        if (showAllButton) {
+            showAllButton.classList.remove('bg-gray-700', 'bg-yellow-600', 'bg-blue-600');
+            showAllButton.classList.add('bg-gray-600');
+        }
+        
+        // Set active state based on filter
+        if (filter === 'sent') {
+            if (toggleButton) {
+                toggleButton.classList.remove('bg-blue-600', 'to-indigo-600');
+                toggleButton.classList.add('bg-blue-700', 'to-indigo-700');
+            }
+        } else if (filter === 'pending') {
+            if (showPendingButton) {
+                showPendingButton.classList.remove('bg-yellow-600');
+                showPendingButton.classList.add('bg-yellow-700');
+            }
+        } else if (filter === 'all') {
+            if (showAllButton) {
+                showAllButton.classList.remove('bg-gray-600');
+                showAllButton.classList.add('bg-gray-700');
+            }
+        }
+        
+        currentFilter = filter;
+    }
+
+    // Function to update pagination controls
+    function updatePaginationControls(pagination) {
+        const paginationContainer = document.getElementById('pagination-container');
+        const currentPageSpan = document.getElementById('current-page');
+        const totalPagesSpan = document.getElementById('total-pages');
+        const prevPageBtn = document.getElementById('prev-page');
+        const nextPageBtn = document.getElementById('next-page');
+        
+        // Update current page and total pages
+        currentPage = pagination.current_page;
+        totalPages = pagination.total_pages;
+        
+        if (currentPageSpan) currentPageSpan.textContent = currentPage;
+        if (totalPagesSpan) totalPagesSpan.textContent = totalPages;
+        
+        // Update button states
+        if (prevPageBtn) {
+            prevPageBtn.disabled = !pagination.has_prev;
+            prevPageBtn.classList.toggle('opacity-50', !pagination.has_prev);
+            prevPageBtn.classList.toggle('cursor-not-allowed', !pagination.has_prev);
+        }
+        
+        if (nextPageBtn) {
+            nextPageBtn.disabled = !pagination.has_next;
+            nextPageBtn.classList.toggle('opacity-50', !pagination.has_next);
+            nextPageBtn.classList.toggle('cursor-not-allowed', !pagination.has_next);
+        }
+        
+        // Show/hide pagination container
+        if (paginationContainer) {
+            paginationContainer.style.display = totalPages > 1 ? 'block' : 'none';
+        }
+        
+        console.log('Pagination updated:', { currentPage, totalPages, hasPrev: pagination.has_prev, hasNext: pagination.has_next });
+    }
+
+    // Function to clear search
+    function clearSearch() {
+        const searchInput = document.getElementById('search-notifications');
+        const clearSearchBtn = document.getElementById('clear-search');
+        const searchResultsCount = document.getElementById('search-results-count');
+        const validationDiv = document.getElementById('search-validation');
+        
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        if (clearSearchBtn) {
+            clearSearchBtn.style.display = 'none';
+        }
+        if (searchResultsCount) {
+            searchResultsCount.textContent = '';
+        }
+        if (validationDiv) {
+            validationDiv.style.display = 'none';
+        }
+        searchTerm = '';
     }
 });
 </script>

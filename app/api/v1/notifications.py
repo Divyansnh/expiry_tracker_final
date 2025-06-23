@@ -1,6 +1,6 @@
 from flask import jsonify, request
 from flask_login import login_required, current_user
-from app.api.v1 import api_bp
+from app.api.v1.blueprint import api_bp
 from app.core.extensions import db
 from app.models.notification import Notification
 from app.models.user import User
@@ -15,10 +15,58 @@ from flask import current_app
 @login_required
 def get_notifications():
     """Get user's notifications."""
-    limit = request.args.get('limit', default=10, type=int)
-    notification_service = NotificationService()
-    notifications = notification_service.get_user_notifications(current_user.id, limit)
-    return jsonify([notification.to_dict() for notification in notifications])
+    try:
+        page = request.args.get('page', default=1, type=int)
+        per_page = request.args.get('per_page', default=20, type=int)  # Increased from 10 to 20
+        show_sent = request.args.get('show_sent', 'false').lower() == 'true'
+        filter_type = request.args.get('filter', 'all')  # all, sent, pending
+        search = request.args.get('search', '').strip()  # Search term
+        search_mode = request.args.get('search_mode', 'message')  # Search mode
+        
+        current_app.logger.info(f"API: get_notifications called - user_id: {current_user.id}, page: {page}, per_page: {per_page}, show_sent: {show_sent}, filter: {filter_type}, search: '{search}', search_mode: {search_mode}")
+        
+        notification_service = NotificationService()
+        
+        # Get notifications based on filter type with pagination and search
+        if filter_type == 'sent':
+            notifications, total_count = notification_service.get_user_notifications_paginated(current_user.id, page, per_page, show_sent=True, search=search if search else None, search_mode=search_mode)
+        elif filter_type == 'pending':
+            notifications, total_count = notification_service.get_user_notifications_paginated(current_user.id, page, per_page, show_sent=False, search=search if search else None, search_mode=search_mode)
+        else:  # 'all'
+            notifications, total_count = notification_service.get_user_notifications_all_paginated(current_user.id, page, per_page, search=search if search else None, search_mode=search_mode)
+        
+        # Get total counts for stats
+        total_sent = notification_service.get_notification_count(current_user.id, 'sent')
+        total_pending = notification_service.get_notification_count(current_user.id, 'pending')
+        total_all = total_sent + total_pending
+        
+        # Calculate pagination info
+        total_pages = (total_count + per_page - 1) // per_page  # Ceiling division
+        
+        current_app.logger.info(f"API: get_notifications - found {len(notifications)} notifications, total: {total_count}, pages: {total_pages}")
+        
+        result = [notification.to_dict() for notification in notifications]
+        current_app.logger.info(f"API: get_notifications - returning {len(result)} notifications")
+        
+        return jsonify({
+            'notifications': result,
+            'stats': {
+                'total_sent': total_sent,
+                'total_pending': total_pending,
+                'total_all': total_all
+            },
+            'pagination': {
+                'current_page': page,
+                'per_page': per_page,
+                'total_count': total_count,
+                'total_pages': total_pages,
+                'has_next': page < total_pages,
+                'has_prev': page > 1
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"API: get_notifications error - {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/notifications/<int:notification_id>/read', methods=['PUT'])
 @login_required

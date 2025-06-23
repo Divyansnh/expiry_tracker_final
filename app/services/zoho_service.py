@@ -10,6 +10,7 @@ from app.core.extensions import db
 from app.models.item import Item, STATUS_EXPIRED, STATUS_ACTIVE, STATUS_EXPIRING_SOON, STATUS_PENDING
 from app.models.user import User
 from urllib.parse import urlencode
+from app.utils.security import verify_zoho_credential
 
 class ZohoService:
     """Service for interacting with Zoho Inventory API."""
@@ -17,14 +18,44 @@ class ZohoService:
     def __init__(self, user: User) -> None:
         """Initialize service with user."""
         self.user: User = user
-        self.client_id: str = user.zoho_client_id or current_app.config['ZOHO_CLIENT_ID']
-        self.client_secret: str = user.zoho_client_secret or current_app.config['ZOHO_CLIENT_SECRET']
+        self.client_id: str = self._get_client_id()
+        self.client_secret: str = self._get_client_secret()
         self.redirect_uri: str = current_app.config['ZOHO_REDIRECT_URI']
         self.base_url: str = current_app.config['ZOHO_API_BASE_URL']
         self.accounts_url: str = current_app.config['ZOHO_ACCOUNTS_URL']
         
         # Don't log sensitive information
         current_app.logger.info("Zoho service initialized for user: %s", user.username)
+    
+    def _get_client_id(self) -> str:
+        """Get the decrypted client ID."""
+        # First try to get from plain text (for backward compatibility)
+        if self.user.zoho_client_id:
+            return self.user.zoho_client_id
+        
+        # If not available, try to decrypt from hash
+        if self.user.zoho_client_id_hash and self.user.zoho_client_id_salt:
+            decrypted = verify_zoho_credential(self.user.zoho_client_id_hash, self.user.zoho_client_id_salt)
+            if decrypted:
+                return decrypted
+        
+        # Fallback to config
+        return current_app.config['ZOHO_CLIENT_ID']
+    
+    def _get_client_secret(self) -> str:
+        """Get the decrypted client secret."""
+        # First try to get from plain text (for backward compatibility)
+        if self.user.zoho_client_secret:
+            return self.user.zoho_client_secret
+        
+        # If not available, try to decrypt from hash
+        if self.user.zoho_client_secret_hash and self.user.zoho_client_secret_salt:
+            decrypted = verify_zoho_credential(self.user.zoho_client_secret_hash, self.user.zoho_client_secret_salt)
+            if decrypted:
+                return decrypted
+        
+        # Fallback to config
+        return current_app.config['ZOHO_CLIENT_SECRET']
     
     def get_access_token(self) -> Optional[str]:
         """Get the current access token from user record."""
@@ -206,7 +237,8 @@ class ZohoService:
                             'location',
                             'notes',
                             'purchase_price',
-                            'expiry_date'
+                            'expiry_date',
+                            'category_id'
                         ]
                         
                         # Only update non-protected fields
@@ -258,12 +290,17 @@ class ZohoService:
             'prompt': 'consent'
         }
         
-        # Don't log sensitive parameters
+        # Add detailed debugging
         current_app.logger.info("Generating Zoho auth URL")
+        current_app.logger.info(f"Client ID: {self.client_id[:10]}..." if self.client_id else "No client ID")
+        current_app.logger.info(f"Redirect URI: {self.redirect_uri}")
+        current_app.logger.info(f"Accounts URL: {self.accounts_url}")
+        
         auth_url = f"{self.accounts_url}/oauth/v2/auth"
         query_string = urlencode(params)
         full_url = f"{auth_url}?{query_string}"
-        current_app.logger.info("Generated Zoho auth URL")
+        
+        current_app.logger.info(f"Generated Zoho auth URL: {full_url}")
         return full_url
     
     def handle_callback(self, code: str) -> bool:

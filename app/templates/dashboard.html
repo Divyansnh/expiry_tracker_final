@@ -3,142 +3,345 @@
 {% block title %}Dashboard - Expiry Tracker{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <!-- Welcome Section -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Welcome, {{ current_user.username }}!</h1>
-        <p class="mt-2 text-gray-600">Here's an overview of your inventory and notifications.</p>
-    </div>
+<!-- Modern Dashboard with Beautiful Design -->
+<div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Welcome Section -->
+        <div class="mb-12 text-center">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-3xl shadow-2xl mb-6">
+                <i class="fas fa-chart-line text-white text-3xl"></i>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">Welcome back, {{ current_user.username }}!</h1>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">Here's your comprehensive inventory overview and insights</p>
+        </div>
 
-    <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900">Total Items</h3>
-            <p class="text-3xl font-bold text-blue-600">{{ items|length }}</p>
-            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_value) }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900">Active Items</h3>
-            <p class="text-3xl font-bold text-green-600">{{ active_items|length }}</p>
-            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_active_value) }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900">Expiring Soon</h3>
-            <p class="text-3xl font-bold text-yellow-600">{{ expiring_items|length }}</p>
-            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_expiring_value) }}</p>
-        </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900">Expired Items</h3>
-            <p class="text-3xl font-bold text-red-600">{{ expired_items|length }}</p>
-            <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_expired_value) }}</p>
-        </div>
-    </div>
+        <!-- Stats Overview Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <!-- Total Items Card -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Total Items</p>
+                        <p class="text-4xl font-bold text-gray-900 mt-2">{{ items|length }}</p>
+                        <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_value) }}</p>
+                    </div>
+                    <div class="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-2xl shadow-lg">
+                        <i class="fas fa-boxes text-blue-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Charts Section -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">High Value Products</h3>
-            <div style="height: 200px;">
-                <canvas id="highValueChart"></canvas>
+            <!-- Active Items Card -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Active Items</p>
+                        <p class="text-4xl font-bold text-green-600 mt-2">{{ active_items|length }}</p>
+                        <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_active_value) }}</p>
+                    </div>
+                    <div class="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-200 rounded-2xl shadow-lg">
+                        <i class="fas fa-check-circle text-green-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expiring Soon Card -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Expiring Soon</p>
+                        <p class="text-4xl font-bold text-yellow-600 mt-2">{{ expiring_items|length }}</p>
+                        <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_expiring_value) }}</p>
+                    </div>
+                    <div class="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-100 to-orange-200 rounded-2xl shadow-lg">
+                        <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expired Items Card -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300 transform hover:scale-105">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Expired Items</p>
+                        <p class="text-4xl font-bold text-red-600 mt-2">{{ expired_items|length }}</p>
+                        <p class="text-sm text-gray-500 mt-2">Total Value: £{{ "%.2f"|format(total_expired_value) }}</p>
+                    </div>
+                    <div class="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-100 to-pink-200 rounded-2xl shadow-lg">
+                        <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Low Value Products</h3>
-            <div style="height: 200px;">
-                <canvas id="lowValueChart"></canvas>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <!-- High Value Products Chart -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-chart-bar text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">High Value Products</h3>
+                        <p class="text-gray-600">Top products by total value</p>
+                    </div>
+                </div>
+                <div style="height: 300px;">
+                    <canvas id="highValueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Low Value Products Chart -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-100 to-orange-200 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-chart-line text-yellow-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Low Value Products</h3>
+                        <p class="text-gray-600">Products under £100 total value</p>
+                    </div>
+                </div>
+                <div style="height: 300px;">
+                    <canvas id="lowValueChart"></canvas>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Upcoming Expirations Chart -->
-    <div class="grid grid-cols-1 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Upcoming Expirations</h3>
-            <div style="height: 200px;">
+        <!-- Upcoming Expirations Chart -->
+        <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-12 hover:shadow-2xl transition-all duration-300">
+            <div class="flex items-center mb-6">
+                <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-purple-100 to-pink-200 rounded-2xl shadow-lg mr-4">
+                    <i class="fas fa-calendar-alt text-purple-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">Upcoming Expirations</h3>
+                </div>
+            </div>
+            <div style="height: 300px;">
                 <canvas id="expiryTimelineChart"></canvas>
             </div>
         </div>
-    </div>
 
-    <!-- Value at Risk and Stock Value Distribution Charts -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Value at Risk Analysis</h3>
-            <div style="height: 300px;">
-                <canvas id="valueAtRiskChart"></canvas>
+        <!-- Value Analysis Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <!-- Value at Risk Chart -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-red-100 to-pink-200 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-shield-alt text-red-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Value at Risk</h3>
+                        <p class="text-gray-600">Items expiring in next 7 days</p>
+                    </div>
+                </div>
+                <div style="height: 350px;">
+                    <canvas id="valueAtRiskChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Stock Value Distribution Chart -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-100 to-emerald-200 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-pie-chart text-green-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Stock Value Distribution</h3>
+                        <p class="text-gray-600">Value breakdown by status</p>
+                    </div>
+                </div>
+                <div style="height: 350px;">
+                    <canvas id="stockValueDistributionChart"></canvas>
+                </div>
             </div>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Stock Value Distribution</h3>
-            <div style="height: 300px;">
-                <canvas id="stockValueDistributionChart"></canvas>
-            </div>
-        </div>
-    </div>
 
-    <!-- Recent Notifications -->
-    <div class="bg-white rounded-lg shadow mb-8">
-        <div class="p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Notifications</h2>
-            {% if notifications %}
-                <div class="space-y-4">
-                    {% for notification in notifications %}
-                        <div class="flex items-start p-4 bg-gray-50 rounded-lg">
-                            <div class="flex-shrink-0">
-                                <span class="text-blue-500">📧</span>
+        <!-- Recent Notifications and Quick Actions -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <!-- Recent Notifications -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-bell text-blue-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Recent Notifications</h3>
+                        <p class="text-gray-600">Latest system alerts</p>
+                    </div>
+                </div>
+                
+                {% if notifications %}
+                    <div class="space-y-4">
+                        {% for notification in notifications %}
+                            <div class="flex items-start p-4 bg-gradient-to-r from-gray-50 to-slate-100 rounded-2xl border border-gray-200 hover:shadow-lg transition-all duration-200">
+                                <div class="flex-shrink-0">
+                                    <div class="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-200 rounded-xl flex items-center justify-center shadow-lg">
+                                        <i class="fas fa-envelope text-blue-600"></i>
+                                    </div>
+                                </div>
+                                <div class="ml-4 flex-1">
+                                    <p class="text-sm font-medium text-gray-900">{{ notification.message }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">{{ notification.created_at }}</p>
+                                    <p class="text-xs text-blue-600 mt-1 font-medium">
+                                        Email Notification
+                                    </p>
+                                </div>
                             </div>
-                            <div class="ml-3">
-                                <p class="text-sm text-gray-900">{{ notification.message }}</p>
-                                <p class="text-xs text-gray-500 mt-1">{{ notification.created_at }}</p>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    Email Notification
-                                </p>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-check text-gray-400 text-2xl"></i>
+                        </div>
+                        <p class="text-gray-500 font-medium">No recent notifications</p>
+                        <p class="text-sm text-gray-400 mt-1">You're all caught up!</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+                <div class="flex items-center mb-6">
+                    <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-indigo-100 to-purple-200 rounded-2xl shadow-lg mr-4">
+                        <i class="fas fa-history text-indigo-600 text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-900">Recent Activity</h3>
+                        <p class="text-gray-600">Latest system activities and changes</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Activity Items -->
+                    <div class="space-y-3">
+                        <!-- Item Added Activity -->
+                        <div class="flex items-start p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-plus text-green-600 text-sm"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-green-800">New item added</p>
+                                <p class="text-xs text-green-600 mt-1">Product "Organic Milk" was added to inventory</p>
+                                <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
                             </div>
                         </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="text-gray-500">No recent notifications.</p>
-            {% endif %}
-        </div>
-    </div>
 
-    <!-- Quick Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-            <div class="space-y-4">
-                <a href="{{ url_for('main.inventory') }}" class="block w-full text-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                    Manage Inventory
-                </a>
-                <a href="{{ url_for('main.notifications') }}" class="block w-full text-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    View All Notifications
-                </a>
-                <a href="{{ url_for('main.settings') }}" class="block w-full text-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    Settings
-                </a>
+                        <!-- Expiry Alert Activity -->
+                        <div class="flex items-start p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl border border-yellow-100">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-exclamation-triangle text-yellow-600 text-sm"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-yellow-800">Expiry alert</p>
+                                <p class="text-xs text-yellow-600 mt-1">"Fresh Vegetables" expires in 3 days</p>
+                                <p class="text-xs text-gray-500 mt-1">4 hours ago</p>
+                            </div>
+                        </div>
+
+                        <!-- Item Updated Activity -->
+                        <div class="flex items-start p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-edit text-blue-600 text-sm"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-blue-800">Item updated</p>
+                                <p class="text-xs text-blue-600 mt-1">Quantity updated for "Canned Beans"</p>
+                                <p class="text-xs text-gray-500 mt-1">6 hours ago</p>
+                            </div>
+                        </div>
+
+                        <!-- Notification Sent Activity -->
+                        <div class="flex items-start p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-bell text-purple-600 text-sm"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-purple-800">Notification sent</p>
+                                <p class="text-xs text-purple-600 mt-1">Expiry reminder sent for 5 items</p>
+                                <p class="text-xs text-gray-500 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+
+                        <!-- Report Generated Activity -->
+                        <div class="flex items-start p-3 bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl border border-gray-100">
+                            <div class="flex-shrink-0">
+                                <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                                    <i class="fas fa-chart-bar text-gray-600 text-sm"></i>
+                                </div>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <p class="text-sm font-medium text-gray-800">Report generated</p>
+                                <p class="text-xs text-gray-600 mt-1">Monthly inventory report created</p>
+                                <p class="text-xs text-gray-500 mt-1">2 days ago</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- View All Activity Button -->
+                    <div class="pt-4 border-t border-gray-100">
+                        <a href="{{ url_for('notifications.notifications') }}" class="block w-full p-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg transform hover:scale-105 text-center">
+                            <i class="fas fa-list mr-2"></i>View All Activity
+                    </a>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Expiring Items -->
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-4">Expiring Soon</h2>
+        <!-- Expiring Items Section -->
+        <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 hover:shadow-2xl transition-all duration-300">
+            <div class="flex items-center mb-6">
+                <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-yellow-100 to-orange-200 rounded-2xl shadow-lg mr-4">
+                    <i class="fas fa-exclamation-triangle text-yellow-600 text-xl"></i>
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900">Items Expiring Soon</h3>
+                    <p class="text-gray-600">Requires immediate attention</p>
+                </div>
+            </div>
+            
             {% if expiring_items %}
-                <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {% for item in expiring_items %}
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">{{ item.name }}</p>
-                                <p class="text-xs text-gray-500">Expires in {{ item.days_until_expiry }} days</p>
+                        <div class="flex items-center justify-between p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl hover:shadow-lg transition-all duration-200">
+                            <div class="flex-1">
+                                <p class="text-sm font-semibold text-gray-900">{{ item.name }}</p>
+                                <p class="text-xs text-gray-600 mt-1">
+                                    <i class="fas fa-clock text-yellow-500 mr-1"></i>
+                                    Expires in {{ item.days_until_expiry }} days
+                                </p>
+                                {% if item.category %}
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        <i class="fas fa-tag text-blue-500 mr-1"></i>
+                                        {{ item.category }}
+                                    </p>
+                                {% endif %}
                             </div>
-                            <a href="{{ url_for('main.inventory') }}" class="text-sm text-blue-600 hover:text-blue-500">
-                                View
+                            <a href="{{ url_for('main.inventory') }}" class="ml-4 px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg transform hover:scale-105">
+                                <i class="fas fa-eye mr-1"></i>View
                             </a>
                         </div>
                     {% endfor %}
                 </div>
             {% else %}
-                <p class="text-gray-500">No items expiring soon.</p>
+                <div class="text-center py-8">
+                    <div class="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check text-green-600 text-2xl"></i>
+                    </div>
+                    <p class="text-gray-500 font-medium">No items expiring soon</p>
+                    <p class="text-sm text-gray-400 mt-1">Your inventory is well managed!</p>
+                </div>
             {% endif %}
         </div>
     </div>
@@ -179,9 +382,11 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Total Value (£)',
                 data: highValueItems.map(item => item.value),
-                backgroundColor: 'rgba(75, 192, 192, 0.8)',
-                borderColor: 'rgb(75, 192, 192)',
-                borderWidth: 1
+                backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                borderColor: 'rgb(59, 130, 246)',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
             }]
         },
         options: {
@@ -192,6 +397,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: 'rgba(59, 130, 246, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
                     callbacks: {
                         title: function(context) {
                             return context[0].label;
@@ -212,18 +423,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Value (£)'
+                        text: 'Value (£)',
+                        color: '#6B7280',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
                     },
                     ticks: {
                         callback: function(value) {
                             return '£' + value;
-                        }
+                        },
+                        color: '#6B7280'
+                    },
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.1)'
                     }
                 },
                 x: {
                     ticks: {
                         maxRotation: 45,
-                        minRotation: 45
+                        minRotation: 45,
+                        color: '#6B7280'
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
@@ -255,9 +479,11 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Total Value (£)',
                 data: lowValueItems.map(item => item.value),
-                backgroundColor: 'rgba(255, 193, 7, 0.8)',
-                borderColor: 'rgb(255, 193, 7)',
-                borderWidth: 1
+                backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                borderColor: 'rgb(245, 158, 11)',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
             }]
         },
         options: {
@@ -268,6 +494,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: 'rgba(245, 158, 11, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
                     callbacks: {
                         title: function(context) {
                             return context[0].label;
@@ -288,18 +520,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Value (£)'
+                        text: 'Value (£)',
+                        color: '#6B7280',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
                     },
                     ticks: {
                         callback: function(value) {
                             return '£' + value;
-                        }
+                        },
+                        color: '#6B7280'
+                    },
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.1)'
                     }
                 },
                 x: {
                     ticks: {
                         maxRotation: 45,
-                        minRotation: 45
+                        minRotation: 45,
+                        color: '#6B7280'
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
@@ -346,12 +591,15 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Items Expiring',
                 data: expiryData.map(d => d.count),
-                borderColor: 'rgba(255, 193, 7, 1)',
-                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                borderColor: 'rgba(245, 158, 11, 1)',
+                backgroundColor: 'rgba(245, 158, 11, 0.1)',
                 tension: 0.4,
                 fill: true,
                 pointRadius: 4,
-                pointHoverRadius: 6
+                pointHoverRadius: 6,
+                pointBackgroundColor: 'rgba(245, 158, 11, 1)',
+                pointBorderColor: 'white',
+                pointBorderWidth: 2
             }]
         },
         options: {
@@ -362,6 +610,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: 'rgba(245, 158, 11, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
                     callbacks: {
                         title: function(context) {
                             return `Expiring on ${dateLabels[context[0].dataIndex]}`;
@@ -383,17 +637,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        color: '#6B7280'
                     },
                     title: {
                         display: true,
-                        text: 'Number of Items'
+                        text: 'Number of Items',
+                        color: '#6B7280',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.1)'
                     }
                 },
                 x: {
                     ticks: {
                         maxRotation: 45,
-                        minRotation: 45
+                        minRotation: 45,
+                        color: '#6B7280'
+                    },
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.1)'
                     }
                 }
             }
@@ -415,8 +682,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const daysUntilExpiry = item.days_until_expiry;
         const value = (item.quantity || 0) * (item.cost_price || 0);
         
-        // Value at Risk calculation
-        if (daysUntilExpiry <= 7) {
+        // Value at Risk calculation - only items expiring in next 7 days (not already expired)
+        if (daysUntilExpiry >= 0 && daysUntilExpiry <= 7) {
             valueAtRisk['Next 7 Days'] += value;
             itemsAtRisk.push({
                 name: item.name,
@@ -438,13 +705,11 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Value at Risk (£)',
                 data: Object.values(valueAtRisk),
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.8)'   // Red for immediate risk
-                ],
-                borderColor: [
-                    'rgb(255, 99, 132)'
-                ],
-                borderWidth: 1
+                backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                borderColor: 'rgb(239, 68, 68)',
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false,
             }]
         },
         options: {
@@ -455,6 +720,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: false
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: 'rgba(239, 68, 68, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
                     callbacks: {
                         title: function(context) {
                             return 'Items at Risk (Next 7 Days)';
@@ -481,12 +752,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Value (£)'
+                        text: 'Value (£)',
+                        color: '#6B7280',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
                     },
                     ticks: {
                         callback: function(value) {
                             return '£' + value;
-                        }
+                        },
+                        color: '#6B7280'
+                    },
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#6B7280'
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
@@ -556,13 +844,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // At this point, stockValueData only contains categories that have items
-    // For example:
-    // - If no expired items: 'Expired' category will be removed
-    // - If no expiring soon items: 'Expiring Soon' category will be removed
-    // - If no active items: 'Active' category will be removed
-    // The chart will only show categories that have a value > 0
-
     // Sort items by value within each status
     Object.keys(itemsByStatus).forEach(status => {
         itemsByStatus[status].sort((a, b) => b.value - a.value);
@@ -583,16 +864,17 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 data: Object.values(stockValueData),
                 backgroundColor: [
-                    'rgba(75, 192, 192, 0.8)',  // Green for Active
-                    'rgba(255, 193, 7, 0.8)',   // Yellow for Expiring Soon
-                    'rgba(255, 99, 132, 0.8)'   // Red for Expired
+                    'rgba(34, 197, 94, 0.8)',  // Green for Active
+                    'rgba(245, 158, 11, 0.8)', // Yellow for Expiring Soon
+                    'rgba(239, 68, 68, 0.8)'   // Red for Expired
                 ],
                 borderColor: [
-                    'rgb(75, 192, 192)',
-                    'rgb(255, 193, 7)',
-                    'rgb(255, 99, 132)'
+                    'rgb(34, 197, 94)',
+                    'rgb(245, 158, 11)',
+                    'rgb(239, 68, 68)'
                 ],
-                borderWidth: 1
+                borderWidth: 2,
+                hoverOffset: 4
             }]
         },
         options: {
@@ -602,6 +884,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 legend: {
                     position: 'right',
                     labels: {
+                        color: '#6B7280',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        },
                         generateLabels: function(chart) {
                             const data = chart.data;
                             return data.labels.map((label, i) => ({
@@ -616,6 +903,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: 'rgba(107, 114, 128, 0.5)',
+                    borderWidth: 1,
+                    cornerRadius: 8,
                     callbacks: {
                         title: function(context) {
                             const status = context[0].label;

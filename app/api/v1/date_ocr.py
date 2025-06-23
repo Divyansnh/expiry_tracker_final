@@ -1,12 +1,12 @@
-from flask import Blueprint, request, jsonify
+from flask import request, jsonify
 from app.core.extensions import csrf
 from app.services.date_ocr_service import DateOCRService
+from app.api.v1.blueprint import api_bp
 import os
 
-date_ocr_bp = Blueprint('date_ocr', __name__)
 ocr_service = DateOCRService()
 
-@date_ocr_bp.route('/test', methods=['GET'])
+@api_bp.route('/date_ocr/test', methods=['GET'])
 @csrf.exempt
 def test_connection():
     """Test endpoint to verify Azure connection."""
@@ -44,7 +44,7 @@ def test_connection():
             'message': f'Error testing Azure connection: {str(e)}'
         }), 500
 
-@date_ocr_bp.route('/extract', methods=['POST'])
+@api_bp.route('/date_ocr/extract', methods=['POST'])
 @csrf.exempt
 def extract_date():
     """Extract date from uploaded image."""

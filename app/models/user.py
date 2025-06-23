@@ -47,6 +47,10 @@ class User(UserMixin, BaseModel):
     # Zoho integration fields
     zoho_client_id = db.Column(db.String(255))
     zoho_client_secret = db.Column(db.String(255))
+    zoho_client_id_hash = db.Column(db.String(255))  # Hashed client ID
+    zoho_client_secret_hash = db.Column(db.String(255))  # Hashed client secret
+    zoho_client_id_salt = db.Column(db.String(255))  # Salt for client ID encryption
+    zoho_client_secret_salt = db.Column(db.String(255))  # Salt for client secret encryption
     zoho_access_token = db.Column(db.String(255))
     zoho_refresh_token = db.Column(db.String(255))
     zoho_token_expires_at = db.Column(db.DateTime)
@@ -55,6 +59,20 @@ class User(UserMixin, BaseModel):
     # Password reset fields
     password_reset_token = db.Column(db.String(256))
     password_reset_token_expires_at = db.Column(db.DateTime)
+    
+    # Credential access verification fields
+    credential_access_code = db.Column(db.String(6))
+    credential_access_code_expires_at = db.Column(db.DateTime)
+    credential_access_verified = db.Column(db.Boolean, default=False)
+    credential_access_expires_at = db.Column(db.DateTime)
+    
+    # Enhanced disconnect verification fields
+    enhanced_disconnect_code = db.Column(db.String(6))
+    enhanced_disconnect_code_expires_at = db.Column(db.DateTime)
+    
+    # Report deletion verification fields
+    report_deletion_code = db.Column(db.String(6))
+    report_deletion_code_expires_at = db.Column(db.DateTime)
     
     def __init__(self, username=None, email=None, is_verified=False):
         self.username = username
@@ -81,6 +99,34 @@ class User(UserMixin, BaseModel):
         salt = bcrypt.gensalt()
         self.password_hash = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
     
+    @property
+    def zoho_client_id_plain(self):
+        raise AttributeError('zoho_client_id_plain is not a readable attribute')
+    
+    @zoho_client_id_plain.setter
+    def zoho_client_id_plain(self, client_id):
+        if not client_id or not client_id.strip():
+            raise ValueError("Zoho Client ID cannot be empty")
+        # Generate a new salt for each client ID
+        salt = bcrypt.gensalt()
+        self.zoho_client_id_hash = bcrypt.hashpw(client_id.encode('utf-8'), salt).decode('utf-8')
+        # Store plain text temporarily for backward compatibility (will be removed in future)
+        self.zoho_client_id = client_id
+    
+    @property
+    def zoho_client_secret_plain(self):
+        raise AttributeError('zoho_client_secret_plain is not a readable attribute')
+    
+    @zoho_client_secret_plain.setter
+    def zoho_client_secret_plain(self, client_secret):
+        if not client_secret or not client_secret.strip():
+            raise ValueError("Zoho Client Secret cannot be empty")
+        # Generate a new salt for each client secret
+        salt = bcrypt.gensalt()
+        self.zoho_client_secret_hash = bcrypt.hashpw(client_secret.encode('utf-8'), salt).decode('utf-8')
+        # Store plain text temporarily for backward compatibility (will be removed in future)
+        self.zoho_client_secret = client_secret
+    
     def verify_password(self, password: str) -> bool:
         """Verify a password against the stored hash."""
         if not self.password_hash:
@@ -101,6 +147,44 @@ class User(UserMixin, BaseModel):
             db.session.commit()
             
         return is_valid
+    
+    def verify_zoho_client_id(self, client_id: str) -> bool:
+        """Verify a Zoho client ID against the stored hash."""
+        if not self.zoho_client_id_hash:
+            return False
+            
+        # Verify client ID using bcrypt
+        try:
+            is_valid = bcrypt.checkpw(
+                client_id.encode('utf-8'),
+                self.zoho_client_id_hash.encode('utf-8')
+            )
+        except ValueError:
+            # Handle potential invalid hash format
+            return False
+        
+        return is_valid
+    
+    def verify_zoho_client_secret(self, client_secret: str) -> bool:
+        """Verify a Zoho client secret against the stored hash."""
+        if not self.zoho_client_secret_hash:
+            return False
+            
+        # Verify client secret using bcrypt
+        try:
+            is_valid = bcrypt.checkpw(
+                client_secret.encode('utf-8'),
+                self.zoho_client_secret_hash.encode('utf-8')
+            )
+        except ValueError:
+            # Handle potential invalid hash format
+            return False
+        
+        return is_valid
+    
+    def verify_zoho_credentials(self, client_id: str, client_secret: str) -> bool:
+        """Verify both Zoho client ID and secret."""
+        return self.verify_zoho_client_id(client_id) and self.verify_zoho_client_secret(client_secret)
     
     def is_locked(self) -> bool:
         """Check if the account is currently locked."""
@@ -153,7 +237,7 @@ class User(UserMixin, BaseModel):
         """Generate email verification code."""
         # Generate a 6-digit verification code
         self.verification_code = ''.join(secrets.choice(string.digits) for _ in range(6))
-        self.verification_code_expires_at = datetime.utcnow() + timedelta(hours=1)
+        self.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=5)
         self.save()
         return self.verification_code
     
@@ -192,9 +276,13 @@ class User(UserMixin, BaseModel):
         """String representation of the user."""
         return f'<User {self.username}>'
 
-    def generate_password_reset_token(self, expires_in: int = 3600) -> str:
+    def generate_password_reset_token(self, expires_in: Optional[int] = None) -> str:
         """Generate a password reset token using JWT."""
         try:
+            # Use config value if not specified
+            if expires_in is None:
+                expires_in = int(current_app.config['PASSWORD_RESET_EXPIRY'].total_seconds())
+            
             payload = {
                 'reset_password': self.id,
                 'email': self.email,

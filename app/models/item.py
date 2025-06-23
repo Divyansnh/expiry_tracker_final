@@ -128,7 +128,7 @@ class Item(BaseModel):
             'unit': self.unit,
             'batch_number': self.batch_number,
             'purchase_date': self.purchase_date.isoformat() if isinstance(self.purchase_date, datetime) else self.purchase_date,
-            'expiry_date': self.expiry_date.isoformat() if isinstance(self.expiry_date, datetime) else self.expiry_date,
+            'expiry_date': self.expiry_date.strftime('%Y-%m-%d') if isinstance(self.expiry_date, datetime) else (self.expiry_date.strftime('%Y-%m-%d') if hasattr(self.expiry_date, 'strftime') else self.expiry_date),
             'purchase_price': self.purchase_price,
             'selling_price': self.selling_price,
             'cost_price': self.cost_price,

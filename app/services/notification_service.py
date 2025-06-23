@@ -242,4 +242,183 @@ class NotificationService:
             return notifications
         except Exception as e:
             current_app.logger.error(f"Error getting user notifications: {str(e)}")
-            return [] 
+            return []
+    
+    def get_user_notifications_all(self, user_id: int, limit: int = 10) -> List[Notification]:
+        """Get all notifications (both sent and pending) for a specific user.
+        
+        Args:
+            user_id: The ID of the user to get notifications for
+            limit: Maximum number of notifications to return
+            
+        Returns:
+            List of Notification objects
+        """
+        try:
+            query = Notification.query.filter_by(
+                user_id=user_id,
+                type='email'
+            )
+                
+            notifications = query.order_by(
+                Notification.created_at.desc()
+            ).limit(limit).all()
+            
+            return notifications
+        except Exception as e:
+            current_app.logger.error(f"Error getting all user notifications: {str(e)}")
+            return []
+    
+    def get_notification_count(self, user_id: int, status: Optional[str] = None) -> int:
+        """Get the count of notifications for a specific user.
+        
+        Args:
+            user_id: The ID of the user to get notification count for
+            status: Status filter ('sent', 'pending', or None for all)
+            
+        Returns:
+            Count of notifications
+        """
+        try:
+            query = Notification.query.filter_by(
+                user_id=user_id,
+                type='email'
+            )
+            
+            if status:
+                query = query.filter_by(status=status)
+                
+            return query.count()
+        except Exception as e:
+            current_app.logger.error(f"Error getting notification count: {str(e)}")
+            return 0
+    
+    def get_user_notifications_paginated(self, user_id: int, page: int = 1, per_page: int = 20, show_sent: bool = False, search: Optional[str] = None, search_mode: str = 'message') -> tuple[List[Notification], int]:
+        """Get paginated notifications for a specific user.
+        
+        Args:
+            user_id: The ID of the user to get notifications for
+            page: Page number (1-based)
+            per_page: Number of notifications per page
+            show_sent: Whether to include sent notifications
+            search: Optional search term to filter notifications
+            search_mode: Search mode ('message', 'item', 'email', 'date')
+            
+        Returns:
+            Tuple of (notifications, total_count)
+        """
+        try:
+            query = Notification.query.filter_by(
+                user_id=user_id,
+                type='email',
+                status='sent' if show_sent else 'pending'
+            )
+            
+            # Add search filter based on mode
+            if search:
+                if search_mode == 'message':
+                    query = query.filter(Notification.message.ilike(f'%{search}%'))
+                elif search_mode == 'date':
+                    # Search by date in created_at only (not message content)
+                    try:
+                        if len(search) == 4 and search.isdigit():  # Year only
+                            year = int(search)
+                            if 1900 <= year <= 2100:
+                                query = query.filter(
+                                    Notification.created_at >= datetime(year, 1, 1),
+                                    Notification.created_at < datetime(year + 1, 1, 1)
+                                )
+                        elif len(search) == 10 and search.count('-') == 2:  # Full date YYYY-MM-DD
+                            # Validate date format
+                            try:
+                                search_date = datetime.strptime(search, '%Y-%m-%d')
+                                query = query.filter(
+                                    Notification.created_at >= search_date,
+                                    Notification.created_at < search_date + timedelta(days=1)
+                                )
+                            except ValueError:
+                                # Invalid date format - return no results
+                                query = query.filter(Notification.id == -1)  # Impossible condition
+                        else:
+                            # Invalid format - return no results
+                            query = query.filter(Notification.id == -1)  # Impossible condition
+                    except (ValueError, TypeError):
+                        # Fallback to no results if date parsing fails
+                        query = query.filter(Notification.id == -1)  # Impossible condition
+            
+            # Get total count
+            total_count = query.count()
+            
+            # Get paginated results
+            notifications = query.order_by(
+                Notification.created_at.desc()
+            ).offset((page - 1) * per_page).limit(per_page).all()
+            
+            return notifications, total_count
+        except Exception as e:
+            current_app.logger.error(f"Error getting paginated user notifications: {str(e)}")
+            return [], 0
+    
+    def get_user_notifications_all_paginated(self, user_id: int, page: int = 1, per_page: int = 20, search: Optional[str] = None, search_mode: str = 'message') -> tuple[List[Notification], int]:
+        """Get all paginated notifications (both sent and pending) for a specific user.
+        
+        Args:
+            user_id: The ID of the user to get notifications for
+            page: Page number (1-based)
+            per_page: Number of notifications per page
+            search: Optional search term to filter notifications
+            search_mode: Search mode ('message', 'item', 'email', 'date')
+            
+        Returns:
+            Tuple of (notifications, total_count)
+        """
+        try:
+            query = Notification.query.filter_by(
+                user_id=user_id,
+                type='email'
+            )
+            
+            # Add search filter based on mode
+            if search:
+                if search_mode == 'message':
+                    query = query.filter(Notification.message.ilike(f'%{search}%'))
+                elif search_mode == 'date':
+                    # Search by date in created_at only (not message content)
+                    try:
+                        if len(search) == 4 and search.isdigit():  # Year only
+                            year = int(search)
+                            if 1900 <= year <= 2100:
+                                query = query.filter(
+                                    Notification.created_at >= datetime(year, 1, 1),
+                                    Notification.created_at < datetime(year + 1, 1, 1)
+                                )
+                        elif len(search) == 10 and search.count('-') == 2:  # Full date YYYY-MM-DD
+                            # Validate date format
+                            try:
+                                search_date = datetime.strptime(search, '%Y-%m-%d')
+                                query = query.filter(
+                                    Notification.created_at >= search_date,
+                                    Notification.created_at < search_date + timedelta(days=1)
+                                )
+                            except ValueError:
+                                # Invalid date format - return no results
+                                query = query.filter(Notification.id == -1)  # Impossible condition
+                        else:
+                            # Invalid format - return no results
+                            query = query.filter(Notification.id == -1)  # Impossible condition
+                    except (ValueError, TypeError):
+                        # Fallback to no results if date parsing fails
+                        query = query.filter(Notification.id == -1)  # Impossible condition
+            
+            # Get total count
+            total_count = query.count()
+            
+            # Get paginated results
+            notifications = query.order_by(
+                Notification.created_at.desc()
+            ).offset((page - 1) * per_page).limit(per_page).all()
+            
+            return notifications, total_count
+        except Exception as e:
+            current_app.logger.error(f"Error getting all paginated user notifications: {str(e)}")
+            return [], 0 
