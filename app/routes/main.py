@@ -16,6 +16,11 @@ def index():
         return redirect(url_for('main.dashboard'))
     return render_template('index.html')
 
+@main_bp.route('/demo')
+def demo():
+    """Demo information page for portfolio showcase."""
+    return render_template('demo_info.html')
+
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():

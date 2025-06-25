@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: expiry-tracker-demo
+    env: python
+    buildCommand: |
+      pip install -r requirements.txt
+      python scripts/setup_full_demo.py
+    startCommand: gunicorn wsgi:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: expiry-tracker-db
+          property: connectionString
+      - key: MAIL_SERVER
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_USE_TLS
+        value: true
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_DEFAULT_SENDER
+        sync: false
+      - key: AZURE_VISION_KEY
+        sync: false
+      - key: AZURE_VISION_ENDPOINT
+        sync: false
+      - key: ZOHO_CLIENT_ID
+        sync: false
+      - key: ZOHO_CLIENT_SECRET
+        sync: false
+      - key: ZOHO_REDIRECT_URI
+        sync: false
+      - key: ZOHO_ORGANIZATION_ID
+        sync: false
+      - key: SESSION_COOKIE_SECURE
+        value: true
+      - key: SESSION_COOKIE_HTTPONLY
+        value: true
+      - key: SESSION_COOKIE_SAMESITE
+        value: Strict
+
+databases:
+  - name: expiry-tracker-db
+    databaseName: expiry_tracker
+    user: expiry_user 
