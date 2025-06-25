@@ -4,6 +4,7 @@ from app.core.extensions import db, login_manager
 from app.models.user import User
 from app.services.zoho_service import ZohoService
 from app.services.email_service import EmailService
+from app.services.activity_service import ActivityService
 from datetime import datetime, timedelta
 from app.forms.reset_password_request_form import ResetPasswordRequestForm
 from app.forms.reset_password_form import ResetPasswordForm
@@ -88,6 +89,10 @@ def login():
         # Update last login
         user.last_login = datetime.utcnow()
         db.session.commit()
+        
+        # Log successful login activity
+        activity_service = ActivityService()
+        activity_service.log_login(user.id)
         
         # Get the next URL from the query parameters
         next_page = request.args.get('next')
@@ -276,17 +281,13 @@ def resend_verification():
 @auth_bp.route('/logout')
 @login_required
 def logout():
-    """User logout."""
-    # Clear session
-    session.clear()
+    """Handle user logout."""
+    # Log logout activity before logging out
+    activity_service = ActivityService()
+    activity_service.log_logout(current_user.id)
     
-    # Logout user
     logout_user()
-    
-    # Flash message
-    flash('You have been logged out.', 'info')
-    
-    # Redirect to login page
+    flash('You have been logged out successfully.', 'success')
     return redirect(url_for('auth.login'))
 
 @auth_bp.route('/zoho/test-config')

@@ -1,8 +1,16 @@
-# Python
+# =============================================================================
+# PYTHON
+# =============================================================================
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# C extensions
+*.c
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -16,95 +24,442 @@ parts/
 sdist/
 var/
 wheels/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.pytest_cache/
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
 .coverage
 *.coverage
 .coverage.*
-.pytest_cache/
-
-# Virtual Environment
-venv/
-ENV/
-env/
-.env
-.env.*
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-.DS_Store
-
-# Database
-*.sqlite3
-*.db
-*.sql
-scripts/db/backups/
-backups/
-migrations/versions/__pycache__/
-app.db
-
-# Logs
-*.log
-logs/
-log/
-
-# Coverage reports
-htmlcov/
-.tox/
 .cache
 nosetests.xml
 coverage.xml
 *.cover
+*.py,cover
 .hypothesis/
+.pytest_cache/
+cover/
 
-# Flask
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
 instance/
 .webassets-cache
-flask_session/
 
-# Azure
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# =============================================================================
+# FLASK SPECIFIC
+# =============================================================================
+# Flask session files
+app/flask_session/
+flask_session/
+*.session
+
+# Flask instance folder
+instance/
+
+# Flask web assets cache
+.webassets-cache
+
+# =============================================================================
+# DATABASE
+# =============================================================================
+# SQLite databases
+*.sqlite3
+*.db
+*.sql
+app.db
+
+# Database backups
+scripts/db/backups/
+backups/
+db_backups/
+database_backups/
+*.backup
+*.backup.gz
+*.sql.gz
+pre_restore_backup_*
+expiry_tracker_backup_*
+
+# Backup configuration
+backup_config.json
+
+# Migration cache
+migrations/versions/__pycache__/
+
+# =============================================================================
+# LOGS
+# =============================================================================
+# Log files
+*.log
+logs/
+log/
+*.log.*
+
+# Application specific logs
+app.log
+app.log.*
+error.log
+access.log
+credential_access.log
+output.log
+backup_scheduler.log
+cron_backup.log
+
+# =============================================================================
+# UPLOADS & MEDIA
+# =============================================================================
+# Upload directories
+app/static/uploads/
+app/static/images/processed/
+uploads/
+media/
+
+# =============================================================================
+# TEMPORARY & DEBUG FILES
+# =============================================================================
+# Temporary files
+temp_restore/
+temp_backup/
+*.tmp
+*.temp
+
+# Debug images
+debug_images/
+test_images/
+
+# =============================================================================
+# BACKUP & RESTORE
+# =============================================================================
+# Backup directories
+database_backups/
+backup_storage/
+backup_archives/
+
+# Backup files
+*.backup
+*.backup.gz
+*.sql.gz
+*.dump
+*.dump.gz
+
+# Backup logs
+backup_*.log
+restore_*.log
+cron_backup.log
+
+# Temporary restore files
+temp_restore/
+restore_temp/
+
+# Backup configuration
+backup_config.json
+backup_settings.json
+
+# Pre-restore backups
+pre_restore_backup_*
+
+# Backup metadata
+backup_metadata.json
+backup_index.json
+
+# =============================================================================
+# SECURITY & CREDENTIALS
+# =============================================================================
+# Environment variables
+.env
+.env.*
+*.env
+
+# SSL certificates
 *.pem
 *.key
 *.cert
+*.crt
+*.p12
+*.pfx
 
-# Email
+# Azure credentials
+azure_credentials.json
+azure_config.json
+
+# Zoho credentials
+zoho_credentials.json
+zoho_config.json
+
+# =============================================================================
+# EMAIL
+# =============================================================================
+# Email files
 *.eml
 *.msg
+emails/
 
-# OCR
-*.jpg
-*.jpeg
-*.png
-*.gif
-*.bmp
-*.tiff
-*.pdf
-debug_images/
+# =============================================================================
+# IDE & EDITOR
+# =============================================================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
 
+# PyCharm
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# =============================================================================
+# OPERATING SYSTEM
+# =============================================================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =============================================================================
+# TEMPORARY FILES
+# =============================================================================
 # Temporary files
 *.tmp
 *.temp
 *.bak
 *.backup
+*.old
+*.orig
+*.rej
+*.swp
+*.swo
+*~
 
-# System Files
-.DS_Store
-Thumbs.db
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
 
-# Project specific
-app/static/uploads/
-app/static/images/processed/
-*.pyc
-*.pyo
-*.pyd
-.Python
+# =============================================================================
+# PROJECT SPECIFIC
+# =============================================================================
+# OAuth states
+oauth_states/
 
-# Configuration
+# Scheduler jobs
+scheduler_jobs/
+
+# Configuration files (if sensitive)
 config/
 *.config
-*.conf 
+*.conf
+
+# Backup files
+*.backup
+*.bak
+
+# Cache directories
+.cache/
+cache/
+
+# =============================================================================
+# DEVELOPMENT & TESTING
+# =============================================================================
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Test results
+test_results/
+.pytest_cache/
+
+# Documentation builds
+docs/_build/
+docs/build/
+
+# =============================================================================
+# DEPLOYMENT
+# =============================================================================
+# Deployment files
+deploy/
+deployment/
+*.deploy
+
+# Docker
+Dockerfile.prod
+docker-compose.prod.yml
+.dockerignore
+
+# =============================================================================
+# MISC
+# =============================================================================
+# Node modules (if any frontend build tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local configuration
+local_config.py
+local_settings.py 

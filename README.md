@@ -10,23 +10,19 @@ A comprehensive inventory management system with expiry date tracking, OCR capab
 - In-app notifications with status tracking
 - Daily status updates and reports
 - Integration with Zoho for inventory sync
-- Analytics and reporting with public sharing
 - User authentication and authorization
 - Responsive web interface
 - Automated cleanup tasks
-- Backup and restore functionality
 - Comprehensive documentation system
 
 ## Notification System
 
-The system sends daily notifications at 3:45 PM BST about items that are expiring soon. The notification system includes:
+The system sends daily notifications at 9:11 PM BST about items that are expiring soon. The notification system includes:
 
 - Duplicate prevention mechanisms
 - Timezone-aware scheduling
 - Cleanup tools for maintenance
 - Monitoring capabilities
-
-For detailed information about the notification system, see [docs/maintenance/notifications.md](docs/maintenance/notifications.md).
 
 ## Configuration
 
@@ -45,11 +41,9 @@ For detailed information about the notification system, see [docs/maintenance/no
 - **Authentication**: Flask-Login
 - **API**: RESTful with Flask-CORS
 - **Task Scheduling**: APScheduler
-- **Documentation**: Sphinx with RTD theme
 - **Development Tools**: Black, Flake8, MyPy
-- **Testing**: Pytest with coverage
-- **Data Analysis**: Pandas, NumPy, Matplotlib, Seaborn
-- **Image Processing**: OpenCV, Pillow
+- **Data Analysis**: NumPy
+- **Image Processing**: OpenCV
 
 ## Prerequisites
 
@@ -60,6 +54,56 @@ For detailed information about the notification system, see [docs/maintenance/no
 - Zoho account for inventory integration (optional)
 
 ## Installation
+
+### Quick Setup (Recommended)
+
+For new users, we provide automated setup scripts that handle the entire installation process:
+
+```bash
+# Clone the repository
+git clone [repository-url]
+cd expiry-tracker
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Run the automated setup script
+python scripts/setup.py
+# OR use the shell script
+./scripts/setup.sh
+```
+
+The setup script will:
+- ✅ Check Python version compatibility
+- ✅ Install all dependencies
+- ✅ Create necessary directories
+- ✅ Set up environment configuration
+- ✅ Initialize database and run migrations
+- ✅ Provide clear next steps
+
+**For detailed setup script documentation, see [scripts/README.md](scripts/README.md)**
+
+### Verifying Setup Scripts
+
+Before using the setup scripts, you can verify they work correctly:
+
+```bash
+# Quick verification (recommended)
+python scripts/verify_setup.py
+
+# Test without execution
+python scripts/quick_test.py --dry-run
+
+# Full testing in isolated environment
+python scripts/quick_test.py
+```
+
+**For detailed verification guide, see [scripts/VERIFICATION_GUIDE.md](scripts/VERIFICATION_GUIDE.md)**
+
+### Manual Installation
+
+If you prefer to set up manually or the automated script doesn't work for your environment:
 
 1. Clone the repository:
 ```bash
@@ -127,17 +171,53 @@ python run.py
 
 3. Create an account and start managing your inventory
 
+## Database Backup System
+
+The application includes a comprehensive backup and restore system to protect your data.
+
+### Quick Backup Operations
+
+```bash
+# Create backup
+python scripts/backup/backup_db.py
+
+# List backups
+python scripts/backup/backup_db.py --list-backups
+
+# Restore safely
+python scripts/backup/backup_restore.py backup_file.backup.gz
+
+# Set up automated backups
+python scripts/backup/backup_scheduler.py --install-cron
+```
+
+### Backup Features
+
+- **Automated backups** with compression and rotation
+- **Safe restore operations** with validation and rollback
+- **Scheduled backups** using cron jobs
+- **Configuration management** for backup settings
+- **Comprehensive logging** and monitoring
+
+### Backup Safety
+
+- Pre-restore backups created automatically
+- File integrity validation
+- Confirmation prompts for destructive operations
+- Rollback capability if restore fails
+
+**💾 Backup System Documentation:**
+- **[scripts/backup/BACKUP_README.md](scripts/backup/BACKUP_README.md)** - Complete backup and restore system documentation
+
 ## Project Structure
 
 ```
 expiry-tracker/
 ├── app/                    # Application code
 │   ├── api/               # API routes and endpoints
-│   ├── core/              # Core functionality
+│   ├── core/              # Core functionality and middleware
 │   ├── forms/             # Form definitions
-│   ├── middleware/        # Request/response middleware
 │   ├── models/            # Database models
-│   ├── repositories/      # Data access layer
 │   ├── routes/            # Route handlers
 │   ├── services/          # Business logic
 │   ├── static/            # Static files
@@ -150,15 +230,29 @@ expiry-tracker/
 ├── docs/                  # Documentation
 ├── logs/                  # Application logs
 ├── migrations/            # Database migrations
-├── scripts/               # Utility scripts
+├── scripts/               # Setup and utility scripts
+│   ├── README.md          # Main scripts overview
+│   ├── backup/            # Database backup system
+│   │   ├── backup_db.py   # Main backup script
+│   │   ├── backup_restore.py # Safe restore script
+│   │   ├── backup_scheduler.py # Automated scheduling
+│   │   ├── backup_config.json # Backup configuration
+│   │   └── BACKUP_README.md # Backup documentation
+│   ├── setup/             # Project setup scripts
+│   │   ├── setup.py       # Python setup script
+│   │   ├── setup.sh       # Shell setup script
+│   │   ├── quick_test.py  # Test script
+│   │   ├── verify_setup.py # Verification script
+│   │   ├── README.md      # Setup documentation
+│   │   └── VERIFICATION_GUIDE.md # Testing guide
+│   └── utils/             # Utility scripts (future use)
+├── database_backups/      # Database backup storage (git-ignored)
 ├── test_images/          # Test images for OCR and processing
 ├── tests/                 # Test files
 ├── .env                   # Environment variables
 ├── .env.example           # Example environment variables
 ├── .gitignore             # Git ignore file
 ├── LICENSE                # License file
-├── README.md              # This file
-├── requirements.txt       # Python dependencies
 └── run.py                 # Application entry point
 ```
 
@@ -174,6 +268,21 @@ Comprehensive documentation is available in the `docs/` directory:
 - Maintenance procedures
 - Troubleshooting guides
 
+**📚 For detailed documentation, see [docs/README.md](docs/README.md) which includes:**
+- **User Guide** - Complete feature documentation and tutorials
+- **API Documentation** - RESTful API endpoints and examples
+- **Developer Guide** - Architecture, database schema, and development resources
+- **Troubleshooting & Logging** - System monitoring and issue resolution
+- **Security Documentation** - Implementation details and best practices
+- **Getting Started** - Step-by-step setup and configuration guides
+
+**🔧 Setup Scripts Documentation:**
+- **[scripts/README.md](scripts/README.md)** - Complete setup script documentation and usage
+- **[scripts/VERIFICATION_GUIDE.md](scripts/VERIFICATION_GUIDE.md)** - How to test and verify setup scripts
+
+**💾 Backup System Documentation:**
+- **[scripts/backup/BACKUP_README.md](scripts/backup/BACKUP_README.md)** - Complete backup and restore system documentation
+
 ## Development
 
 The project uses several development tools to maintain code quality:
@@ -181,7 +290,6 @@ The project uses several development tools to maintain code quality:
 - **Black**: Code formatting
 - **Flake8**: Linting
 - **MyPy**: Static type checking
-- **Pytest**: Testing with coverage reports
 
 To run the development tools:
 
@@ -194,9 +302,6 @@ flake8
 
 # Run type checking
 mypy .
-
-# Run tests with coverage
-pytest --cov=app tests/
 ```
 
 ## Contributing
@@ -216,6 +321,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Flask Framework
 - Azure Computer Vision
 - Zoho API
-- All contributors and supporters
-
-Test line in dev branch 
+- All contributors and supporters 

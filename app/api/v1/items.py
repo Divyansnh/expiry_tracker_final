@@ -5,6 +5,7 @@ from app.core.extensions import db
 from app.models.item import Item
 from app.models.user import User
 from app.services.zoho_service import ZohoService
+from app.services.activity_service import ActivityService
 from datetime import datetime
 from typing import Dict, Any, Optional, List, cast
 from flask_login import login_required, current_user
@@ -37,12 +38,25 @@ def create_item():
         
         if existing_item:
             # Update existing item
+            old_values = {
+                'quantity': existing_item.quantity,
+                'cost_price': existing_item.cost_price,
+                'expiry_date': existing_item.expiry_date.isoformat() if existing_item.expiry_date else None
+            }
+            
             for key, value in data.items():
                 if hasattr(existing_item, key):
                     setattr(existing_item, key, value)
             
             existing_item.update_status(force_update=True)
             db.session.commit()
+            
+            # Log activity for item update
+            activity_service = ActivityService()
+            changes = {k: v for k, v in data.items() if k in old_values and old_values[k] != v}
+            if changes:
+                activity_service.log_item_updated(user_id, existing_item.name, existing_item.id, changes)
+            
             return jsonify({'message': 'Item updated successfully', 'item': existing_item.to_dict()})
         
         # Create new item
@@ -67,6 +81,10 @@ def create_item():
         
         db.session.add(item)
         db.session.commit()
+        
+        # Log activity for item creation
+        activity_service = ActivityService()
+        activity_service.log_item_added(user_id, item.name, item.id)
         
         return jsonify({'message': 'Item created successfully', 'item': item.to_dict()})
         
@@ -121,6 +139,15 @@ def update_item(item_id):
         return jsonify({'error': errors}), 400
     
     try:
+        # Store old values for activity logging
+        old_values = {
+            'quantity': item.quantity,
+            'cost_price': item.cost_price,
+            'expiry_date': item.expiry_date.isoformat() if item.expiry_date else None,
+            'selling_price': item.selling_price,
+            'description': item.description
+        }
+        
         # Update item fields
         for key, value in data.items():
             if hasattr(item, key) and key != 'id' and key != 'user_id':
@@ -140,6 +167,13 @@ def update_item(item_id):
             zoho_service.update_item_in_zoho(item.zoho_item_id, data)
         
         db.session.commit()
+        
+        # Log activity for item update
+        activity_service = ActivityService()
+        changes = {k: v for k, v in data.items() if k in old_values and old_values[k] != v}
+        if changes:
+            activity_service.log_item_updated(user_id, item.name, item.id, changes)
+        
         return jsonify({'message': 'Item updated successfully', 'item': item.to_dict()})
         
     except Exception as e:
@@ -169,6 +203,9 @@ def delete_item(item_id):
         if not item:
             return jsonify({'error': 'Item not found'}), 404
         
+        item_name = item.name
+        item_id_for_log = item.id
+        
         # Delete from Zoho if connected
         if current_user.zoho_access_token and item.zoho_item_id:
             zoho_service = ZohoService(cast(User, current_user))
@@ -176,6 +213,10 @@ def delete_item(item_id):
         
         db.session.delete(item)
         db.session.commit()
+        
+        # Log activity for item deletion
+        activity_service = ActivityService()
+        activity_service.log_item_deleted(current_user.id, item_name, item_id_for_log)
         
         return jsonify({'message': 'Item deleted successfully'})
     except Exception as e:

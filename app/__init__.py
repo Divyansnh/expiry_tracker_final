@@ -14,6 +14,7 @@ from app.core.middleware import log_request, handle_cors, validate_request
 from app.routes import main_bp, auth_bp
 from app.routes.reports import reports_bp
 from app.routes.notifications import notifications_bp
+from app.routes.activities import activities_bp
 from app.api.v1 import api_bp
 from app.tasks.cleanup import cleanup_expired_items, cleanup_unverified_accounts
 from app.services.notification_service import NotificationService
@@ -76,8 +77,8 @@ def create_app(config_name=None):
                     id='cleanup_expired_items',
                     func=cleanup_expired_task,
                     trigger='cron',
-                    hour=10,  # Midnight
-                    minute=21,
+                    hour=1,  # Midnight
+                    minute=2,
                     timezone='Europe/London',
                     misfire_grace_time=60,  # Allow job to run up to 12 hours late
                     coalesce=True,  # Run missed jobs only once on startup
@@ -93,8 +94,8 @@ def create_app(config_name=None):
                     id='cleanup_unverified_accounts',
                     func=cleanup_unverified_task,
                     trigger='cron',
-                    hour=16,  # Midnight
-                    minute=26,
+                    hour=21,  # Midnight
+                    minute=13,
                     timezone='Europe/London',
                     misfire_grace_time=60,  # Allow job to run up to 12 hours late
                     coalesce=True,  # Run missed jobs only once on startup
@@ -110,8 +111,8 @@ def create_app(config_name=None):
                     id='send_daily_notifications',
                     func=send_daily_notifications_task,
                     trigger='cron',
-                    hour=12,  # 1 AM BST
-                    minute=57,
+                    hour=21,  # 1 AM BST
+                    minute=11,
                     timezone='Europe/London',
                     misfire_grace_time=60,  # Allow job to run up to 12 hours late
                     coalesce=True,  # Run missed jobs only once on startup
@@ -141,6 +142,7 @@ def create_app(config_name=None):
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(reports_bp)
     app.register_blueprint(notifications_bp)
+    app.register_blueprint(activities_bp)
     app.register_blueprint(api_bp, url_prefix='/api/v1')
     
     # Create database tables

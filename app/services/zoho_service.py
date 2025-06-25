@@ -268,6 +268,12 @@ class ZohoService:
                 
                 db.session.commit()
                 current_app.logger.info("Successfully synced inventory with Zoho")
+                
+                # Log Zoho sync activity
+                from app.services.activity_service import ActivityService
+                activity_service = ActivityService()
+                activity_service.log_zoho_sync(user.id, "inventory", True, synced_count)
+                
                 return {"success": True, "synced": synced_count}
                 
             except json.JSONDecodeError as e:
@@ -277,6 +283,12 @@ class ZohoService:
         except Exception as e:
             current_app.logger.error(f"Error syncing inventory: {str(e)}")
             db.session.rollback()
+            
+            # Log failed Zoho sync activity
+            from app.services.activity_service import ActivityService
+            activity_service = ActivityService()
+            activity_service.log_zoho_sync(user.id, "inventory", False, 0)
+            
             return {"success": False, "synced": 0}
     
     def get_auth_url(self) -> str:

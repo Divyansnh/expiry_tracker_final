@@ -1499,6 +1499,11 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
+let currentSort = {
+    column: null,
+    direction: 'asc'
+};
+
 function validateDecimalPlaces(input, maxDecimals) {
     // Get the current value
     let value = input.value;
@@ -2285,11 +2290,6 @@ async function handleEditImageUpload(event) {
         }, 5000);
     }
 }
-
-let currentSort = {
-    column: null,
-    direction: 'asc'
-};
 
 function sortTable(columnIndex) {
     // Map column index to sort field

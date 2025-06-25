@@ -7,6 +7,7 @@ from flask_login import login_required, current_user
 from app.core.extensions import db
 from app.models.user import User
 from app.services.zoho_service import ZohoService, verify_zoho_credential
+from app.services.activity_service import ActivityService
 from app.utils.security import hash_zoho_credential
 from app.api.v1.blueprint import api_bp
 import logging
@@ -143,6 +144,10 @@ def update_zoho_credentials():
         zoho_client_id = data.get('zoho_client_id')
         zoho_client_secret = data.get('zoho_client_secret')
         
+        # Add debugging information
+        current_app.logger.info(f"Credential update attempt - User ID: {current_user.id}, Client ID provided: {bool(zoho_client_id)}, Client Secret provided: {bool(zoho_client_secret)}")
+        current_app.logger.info(f"Current user credentials - Client ID hash: {bool(current_user.zoho_client_id_hash)}, Client Secret hash: {bool(current_user.zoho_client_secret_hash)}, Client ID plain: {bool(current_user.zoho_client_id)}, Client Secret plain: {bool(current_user.zoho_client_secret)}")
+        
         # Handle partial updates (when only one credential is provided)
         if zoho_client_id is not None and zoho_client_secret is not None:
             # Both credentials provided
@@ -157,6 +162,7 @@ def update_zoho_credentials():
             ).first()
             
             if existing_user_with_client_id:
+                current_app.logger.warning(f"Credential conflict - Client ID already used by user {existing_user_with_client_id.id}")
                 return jsonify({'error': 'These Zoho credentials are already being used by another user. Please use different credentials.'}), 409
             
             existing_user_with_client_secret = User.query.filter(
@@ -165,13 +171,14 @@ def update_zoho_credentials():
             ).first()
             
             if existing_user_with_client_secret:
+                current_app.logger.warning(f"Credential conflict - Client Secret already used by user {existing_user_with_client_secret.id}")
                 return jsonify({'error': 'These Zoho credentials are already being used by another user. Please use different credentials.'}), 409
             
             # Check encrypted credentials by attempting to decrypt and compare
             try:
                 from app.utils.security import verify_zoho_credential
                 
-                # Get all users with encrypted credentials
+                # Get all users with encrypted credentials (excluding current user)
                 users_with_encrypted_creds = User.query.filter(
                     User.id != current_user.id
                 ).all()
@@ -182,12 +189,15 @@ def update_zoho_credentials():
                     if user.zoho_client_id_hash or user.zoho_client_secret_hash
                 ]
                 
+                current_app.logger.info(f"Checking {len(users_with_encrypted_creds)} users with encrypted credentials")
+                
                 for user in users_with_encrypted_creds:
                     # Check client ID
                     if user.zoho_client_id_hash and user.zoho_client_id_salt:
                         try:
                             decrypted_client_id = verify_zoho_credential(user.zoho_client_id_hash, user.zoho_client_id_salt)
                             if decrypted_client_id and decrypted_client_id.strip() == zoho_client_id.strip():
+                                current_app.logger.warning(f"Credential conflict - Encrypted Client ID matches user {user.id}")
                                 return jsonify({'error': 'These Zoho credentials are already being used by another user. Please use different credentials.'}), 409
                         except Exception as e:
                             current_app.logger.warning(f"Could not decrypt client ID for user {user.id}: {str(e)}")
@@ -197,6 +207,7 @@ def update_zoho_credentials():
                         try:
                             decrypted_client_secret = verify_zoho_credential(user.zoho_client_secret_hash, user.zoho_client_secret_salt)
                             if decrypted_client_secret and decrypted_client_secret.strip() == zoho_client_secret.strip():
+                                current_app.logger.warning(f"Credential conflict - Encrypted Client Secret matches user {user.id}")
                                 return jsonify({'error': 'These Zoho credentials are already being used by another user. Please use different credentials.'}), 409
                         except Exception as e:
                             current_app.logger.warning(f"Could not decrypt client secret for user {user.id}: {str(e)}")
@@ -219,6 +230,8 @@ def update_zoho_credentials():
                 current_user.zoho_client_id = None
                 current_user.zoho_client_secret = None
                 
+                current_app.logger.info(f"Successfully encrypted and stored credentials for user {current_user.id}")
+                
             except Exception as e:
                 return jsonify({'error': f'Error encrypting credentials: {str(e)}'}), 500
                 
@@ -234,13 +247,14 @@ def update_zoho_credentials():
             ).first()
             
             if existing_user_with_client_id:
+                current_app.logger.warning(f"Credential conflict - Client ID already used by user {existing_user_with_client_id.id}")
                 return jsonify({'error': 'This Zoho Client ID is already being used by another user. Please use a different Client ID.'}), 409
             
             # Check encrypted credentials for client ID
             try:
                 from app.utils.security import verify_zoho_credential
                 
-                # Get all users with encrypted credentials
+                # Get all users with encrypted credentials (excluding current user)
                 users_with_encrypted_creds = User.query.filter(
                     User.id != current_user.id
                 ).all()
@@ -256,6 +270,7 @@ def update_zoho_credentials():
                         try:
                             decrypted_client_id = verify_zoho_credential(user.zoho_client_id_hash, user.zoho_client_id_salt)
                             if decrypted_client_id and decrypted_client_id.strip() == zoho_client_id.strip():
+                                current_app.logger.warning(f"Credential conflict - Encrypted Client ID matches user {user.id}")
                                 return jsonify({'error': 'This Zoho Client ID is already being used by another user. Please use a different Client ID.'}), 409
                         except Exception as e:
                             current_app.logger.warning(f"Could not decrypt client ID for user {user.id}: {str(e)}")
@@ -283,13 +298,14 @@ def update_zoho_credentials():
             ).first()
             
             if existing_user_with_client_secret:
+                current_app.logger.warning(f"Credential conflict - Client Secret already used by user {existing_user_with_client_secret.id}")
                 return jsonify({'error': 'This Zoho Client Secret is already being used by another user. Please use a different Client Secret.'}), 409
             
             # Check encrypted credentials for client secret
             try:
                 from app.utils.security import verify_zoho_credential
                 
-                # Get all users with encrypted credentials
+                # Get all users with encrypted credentials (excluding current user)
                 users_with_encrypted_creds = User.query.filter(
                     User.id != current_user.id
                 ).all()
@@ -305,6 +321,7 @@ def update_zoho_credentials():
                         try:
                             decrypted_client_secret = verify_zoho_credential(user.zoho_client_secret_hash, user.zoho_client_secret_salt)
                             if decrypted_client_secret and decrypted_client_secret.strip() == zoho_client_secret.strip():
+                                current_app.logger.warning(f"Credential conflict - Encrypted Client Secret matches user {user.id}")
                                 return jsonify({'error': 'This Zoho Client Secret is already being used by another user. Please use a different Client Secret.'}), 409
                         except Exception as e:
                             current_app.logger.warning(f"Could not decrypt client secret for user {user.id}: {str(e)}")
@@ -324,6 +341,12 @@ def update_zoho_credentials():
         
         db.session.commit()
         
+        current_app.logger.info(f"Successfully updated Zoho credentials for user {current_user.id}")
+        
+        # Log activity for Zoho connection
+        activity_service = ActivityService()
+        activity_service.log_settings_updated(current_user.id, "Zoho credentials")
+        
         return jsonify({
             'success': True,
             'message': 'Zoho credentials updated successfully'
@@ -339,18 +362,35 @@ def update_zoho_credentials():
 def disconnect_zoho():
     """Disconnect from Zoho via API."""
     try:
-        # Clear Zoho tokens and credentials
+        # Log current state before disconnecting
+        current_app.logger.info(f"Disconnect attempt - User ID: {current_user.id}")
+        current_app.logger.info(f"Before disconnect - Client ID hash: {bool(current_user.zoho_client_id_hash)}, Client Secret hash: {bool(current_user.zoho_client_secret_hash)}, Client ID plain: {bool(current_user.zoho_client_id)}, Client Secret plain: {bool(current_user.zoho_client_secret)}")
+        
+        # Clear ALL Zoho tokens and credentials (both plain text and encrypted)
         current_user.zoho_access_token = None
         current_user.zoho_refresh_token = None
         current_user.zoho_token_expires_at = None
+        current_user.zoho_organization_id = None
+        
+        # Clear plain text credentials
         current_user.zoho_client_id = None
         current_user.zoho_client_secret = None
+        
+        # Clear encrypted credentials (this was missing!)
         current_user.zoho_client_id_hash = None
         current_user.zoho_client_secret_hash = None
         current_user.zoho_client_id_salt = None
         current_user.zoho_client_secret_salt = None
         
         db.session.commit()
+        
+        # Log state after disconnecting
+        current_app.logger.info(f"After disconnect - Client ID hash: {bool(current_user.zoho_client_id_hash)}, Client Secret hash: {bool(current_user.zoho_client_secret_hash)}, Client ID plain: {bool(current_user.zoho_client_id)}, Client Secret plain: {bool(current_user.zoho_client_secret)}")
+        current_app.logger.info(f"Successfully disconnected user {current_user.id} from Zoho")
+        
+        # Log activity for Zoho disconnection
+        activity_service = ActivityService()
+        activity_service.log_settings_updated(current_user.id, "Zoho disconnection")
         
         return jsonify({'message': 'Successfully disconnected from Zoho'})
         

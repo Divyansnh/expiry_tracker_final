@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app.core.extensions import db
 from app.models.item import Item, STATUS_ACTIVE, STATUS_EXPIRED, STATUS_EXPIRING_SOON, STATUS_PENDING
 from app.services.zoho_service import ZohoService
+from app.services.activity_service import ActivityService
 from datetime import datetime, timedelta
 from app.models.user import User
 
@@ -51,6 +52,10 @@ def dashboard():
         notification_service = NotificationService()
         notifications = notification_service.get_user_notifications(current_user.id, limit=5)
         
+        # Get recent activities using ActivityService
+        activity_service = ActivityService()
+        activities = activity_service.get_recent_activities_for_dashboard(current_user.id, limit=5)
+        
         return render_template('dashboard.html',
                             items=all_items_dict,
                             expiring_items=expiring_items,
@@ -60,7 +65,8 @@ def dashboard():
                             total_expiring_value=total_expiring_value,
                             total_expired_value=total_expired_value,
                             total_value=total_value,
-                            notifications=notifications)
+                            notifications=notifications,
+                            activities=activities)
         
     except Exception as e:
         current_app.logger.error(f"Dashboard error: {str(e)}")

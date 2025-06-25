@@ -6,6 +6,7 @@ from app.models.notification import Notification
 from app.models.item import Item, STATUS_EXPIRED
 from app.models.user import User
 from app.services.email_service import EmailService
+from app.services.activity_service import ActivityService
 from sqlalchemy import and_, not_, or_
 from sqlalchemy.sql import expression
 from sqlalchemy.sql.expression import BinaryExpression, ColumnElement
@@ -24,6 +25,7 @@ class NotificationService:
     def __init__(self) -> None:
         self._notification_days: Optional[List[int]] = None
         self.email_service = EmailService()
+        self.activity_service = ActivityService()
     
     @property
     def notification_days(self) -> List[int]:
@@ -73,8 +75,12 @@ class NotificationService:
                 # Set priority based on days until expiry
                 if days_until_expiry <= 1:  # Today or tomorrow
                     priority = 'high'
+                    # Log expiry alert for urgent items
+                    self.activity_service.log_expiry_alert(item.user_id, item.name, days_until_expiry)
                 elif 2 <= days_until_expiry <= 7:  # 2-7 days
                     priority = 'normal'
+                    # Log expiry alert for items expiring soon
+                    self.activity_service.log_expiry_alert(item.user_id, item.name, days_until_expiry)
                 else:  # 8+ days
                     priority = 'low'
                 
@@ -156,6 +162,14 @@ class NotificationService:
             
             if result:
                 current_app.logger.info(f"Successfully sent notification email to {user.email}")
+                
+                # Log activity for notification sent
+                self.activity_service.log_notification_sent(
+                    user_id=user.id,
+                    notification_type="Daily status update",
+                    item_count=len(items)
+                )
+                
                 # Create notification record
                 notification = self.create_notification(
                     user_id=user.id,

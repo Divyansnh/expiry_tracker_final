@@ -687,8 +687,8 @@
                             <input type="checkbox" id="email_notifications" class="sr-only" 
                                {% if current_user.email_notifications %}checked{% endif %}
                                    style="pointer-events: none;">
-                            <div id="email_notifications_toggle" class="w-14 h-7 bg-gray-200 rounded-full relative transition-all duration-300 ease-in-out shadow-inner" onclick="handleEmailNotificationToggle()">
-                                <div id="email_notifications_thumb" class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-6 w-6 transition-all duration-300 ease-in-out shadow-lg {% if current_user.email_notifications %}translate-x-7 bg-gradient-to-r from-green-500 to-emerald-500{% endif %}"></div>
+                            <div id="email_notifications_toggle" class="w-14 h-7 {% if current_user.email_notifications %}bg-gradient-to-r from-green-500 to-emerald-500{% else %}bg-gray-200{% endif %} rounded-full relative transition-all duration-300 ease-in-out shadow-inner" onclick="handleEmailNotificationToggle()">
+                                <div id="email_notifications_thumb" class="absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-6 w-6 transition-all duration-300 ease-in-out shadow-lg {% if current_user.email_notifications %}translate-x-7{% endif %}"></div>
                             </div>
                     </label>
                 </div>
@@ -814,6 +814,8 @@ function hideWarningNotification() {
 
 async function updateNotificationSettings() {
     const emailNotifications = document.getElementById('email_notifications').checked;
+    const toggle = document.getElementById('email_notifications_toggle');
+    const thumb = document.getElementById('email_notifications_thumb');
     
     try {
         const response = await fetch('/api/v1/settings/notifications', {
@@ -833,14 +835,42 @@ async function updateNotificationSettings() {
             showNotification('Notification settings updated successfully', 'success');
         } else {
             showNotification(data.error || 'Failed to update notification settings', 'error');
-            // Revert the checkbox if update failed
-            document.getElementById('email_notifications').checked = !emailNotifications;
+            // Revert the checkbox and visual state if update failed
+            const checkbox = document.getElementById('email_notifications');
+            checkbox.checked = !emailNotifications;
+            
+            // Revert visual state
+            if (!emailNotifications) { // If we were trying to enable but failed, revert to disabled
+                toggle.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
+                toggle.classList.add('bg-gray-200');
+                thumb.classList.remove('translate-x-7');
+                thumb.classList.add('translate-x-0');
+            } else { // If we were trying to disable but failed, revert to enabled
+                toggle.classList.remove('bg-gray-200');
+                toggle.classList.add('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
+                thumb.classList.remove('translate-x-0');
+                thumb.classList.add('translate-x-7');
+            }
         }
     } catch (error) {
         console.error('Error updating notification settings:', error);
         showNotification('Failed to update notification settings', 'error');
-        // Revert the checkbox if update failed
-        document.getElementById('email_notifications').checked = !emailNotifications;
+        // Revert the checkbox and visual state if update failed
+        const checkbox = document.getElementById('email_notifications');
+        checkbox.checked = !emailNotifications;
+        
+        // Revert visual state
+        if (!emailNotifications) { // If we were trying to enable but failed, revert to disabled
+            toggle.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
+            toggle.classList.add('bg-gray-200');
+            thumb.classList.remove('translate-x-7');
+            thumb.classList.add('translate-x-0');
+        } else { // If we were trying to disable but failed, revert to enabled
+            toggle.classList.remove('bg-gray-200');
+            toggle.classList.add('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
+            thumb.classList.remove('translate-x-0');
+            thumb.classList.add('translate-x-7');
+        }
     }
 }
 
@@ -871,13 +901,13 @@ async function saveZohoCredentials() {
         if (response.ok) {
             showNotification('Zoho credentials saved successfully', 'success');
             hideSaveCredentialsConfirmationModal();
+            
             // Clear the form fields after successful save
             document.getElementById('zoho_client_id').value = '';
             document.getElementById('zoho_client_secret').value = '';
-            // Reload the page to show the updated state
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            
+            // Update UI dynamically instead of reloading
+            updateUIAfterCredentialSave();
         } else if (response.status === 409) {
             // Handle duplicate credentials error
             showNotification(data.error || 'These Zoho credentials are already being used by another user. Please use different credentials.', 'error');
@@ -887,6 +917,111 @@ async function saveZohoCredentials() {
     } catch (error) {
         console.error('Error saving Zoho credentials:', error);
         showNotification('Failed to save Zoho credentials', 'error');
+    }
+}
+
+// Function to update UI after saving credentials
+function updateUIAfterCredentialSave() {
+    // Find the Zoho integration container
+    const zohoContainer = document.querySelector('.bg-white.rounded-3xl.shadow-xl.border.border-gray-100.p-8.mb-8');
+    
+    if (zohoContainer) {
+        // Update connection status card
+        const statusCard = zohoContainer.querySelector('.mb-8.p-6.rounded-2xl.border-2');
+        if (statusCard) {
+            statusCard.className = 'mb-8 p-6 rounded-2xl border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 shadow-lg';
+            
+            const statusContent = statusCard.querySelector('.flex.items-center.justify-between');
+            if (statusContent) {
+                statusContent.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-check-circle text-white text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-xl font-bold text-green-800">Connected to Zoho</h3>
+                            <p class="text-sm text-green-700 mt-1">
+                                Your inventory will be synced when you visit the inventory page.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <span class="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 shadow-md">
+                            <i class="fas fa-sync-alt mr-2"></i>Active
+                        </span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Replace the credentials form with the connected state UI
+        const credentialsForm = zohoContainer.querySelector('.mb-8.bg-gradient-to-r.from-gray-50.to-slate-100.p-8.rounded-2xl.border.border.gray-200.shadow-lg');
+        if (credentialsForm) {
+            const newConnectedUI = `
+                <!-- Secure Credential Access -->
+                <div class="mb-8 bg-gradient-to-r from-gray-50 to-slate-100 p-6 rounded-2xl border border-gray-200 shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-shield-alt text-blue-600 mr-3"></i>
+                        Secure Credential Access
+                    </h3>
+                    <p class="text-gray-600 mb-6">Access your stored Zoho credentials securely. You'll need to verify your identity.</p>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client ID</label>
+                            <div class="flex items-center">
+                                <input type="password" id="zoho_client_id_display" 
+                                       value="••••••••••••••••••••"
+                                       class="flex-1 rounded-xl border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                       readonly>
+                                <button type="button" onclick="showCredentialAccessConfirmationModal('zoho_client_id')" 
+                                        class="ml-4 px-6 py-3 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg transform hover:scale-105">
+                                    <i class="fas fa-eye mr-2"></i>View
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client Secret</label>
+                            <div class="flex items-center">
+                                <input type="password" id="zoho_client_secret_display" 
+                                       value="••••••••••••••••••••"
+                                       class="flex-1 rounded-xl border-gray-300 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200"
+                                       readonly>
+                                <button type="button" onclick="showCredentialAccessConfirmationModal('zoho_client_secret')" 
+                                        class="ml-4 px-6 py-3 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 shadow-lg transform hover:scale-105">
+                                    <i class="fas fa-eye mr-2"></i>View
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-4">
+                    <button onclick="showEnhancedDisconnectZohoConfirmationModal()" class="bg-gradient-to-r from-red-600 to-pink-600 text-white px-8 py-3 rounded-xl hover:from-red-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105">
+                        <i class="fas fa-unlink mr-2"></i>Disconnect from Zoho
+                    </button>
+                </div>
+            `;
+            
+            credentialsForm.outerHTML = newConnectedUI;
+        }
+        
+        // Remove the info boxes that are no longer needed
+        const infoBoxes = zohoContainer.querySelectorAll('.mb-8.p-6.bg-gradient-to-r');
+        infoBoxes.forEach(box => {
+            if (box.textContent.includes('Next Step:') || box.textContent.includes('View Credentials:')) {
+                box.remove();
+            }
+        });
+        
+        // Remove the Connect to Zoho button
+        const connectButton = zohoContainer.querySelector('a[href*="zoho_auth"]');
+        if (connectButton) {
+            connectButton.remove();
+        }
     }
 }
 
@@ -904,16 +1039,137 @@ async function disconnectZoho() {
         if (response.ok) {
             showNotification('Successfully disconnected from Zoho', 'success');
             hideDisconnectZohoConfirmationModal();
-            // Reload the page to update the UI
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            
+            // Update UI dynamically instead of reloading
+            updateUIAfterDisconnect();
         } else {
             showNotification(data.error || 'Failed to disconnect from Zoho', 'error');
         }
     } catch (error) {
         console.error('Error disconnecting from Zoho:', error);
         showNotification('Failed to disconnect from Zoho', 'error');
+    }
+}
+
+// Function to update UI after disconnecting from Zoho
+function updateUIAfterDisconnect() {
+    // Find the Zoho integration container
+    const zohoContainer = document.querySelector('.bg-white.rounded-3xl.shadow-xl.border.border-gray-100.p-8.mb-8');
+    
+    if (zohoContainer) {
+        // Update connection status card
+        const disconnectStatusCard = zohoContainer.querySelector('.mb-8.p-6.rounded-2xl.border-2');
+        if (disconnectStatusCard) {
+            disconnectStatusCard.className = 'mb-8 p-6 rounded-2xl border-2 border-red-200 bg-gradient-to-r from-red-50 to-pink-50 shadow-lg';
+            
+            const statusContent = disconnectStatusCard.querySelector('.flex.items-center.justify-between');
+            if (statusContent) {
+                statusContent.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-12 h-12 bg-gradient-to-br from-red-400 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                <i class="fas fa-times-circle text-white text-2xl"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-xl font-bold text-red-800">Not Connected to Zoho</h3>
+                            <p class="text-sm text-red-700 mt-1">
+                                Please configure your Zoho credentials to connect your account.
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Remove the secure credential access section and disconnect button
+        const secureAccessSection = zohoContainer.querySelector('.mb-8.bg-gradient-to-r.from-gray-50.to-slate-100.p-6.rounded-2xl.border.border-gray-200.shadow-lg');
+        if (secureAccessSection) {
+            secureAccessSection.remove();
+        }
+        
+        const disconnectButton = zohoContainer.querySelector('button[onclick*="showEnhancedDisconnectZohoConfirmationModal"]');
+        if (disconnectButton) {
+            disconnectButton.remove();
+        }
+        
+        // Add the credentials form back
+        const newCredentialsForm = `
+            <!-- Zoho Developer Credentials Form -->
+            <div class="mb-8 bg-gradient-to-r from-gray-50 to-slate-100 p-8 rounded-2xl border border-gray-200 shadow-lg">
+                <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                    <i class="fas fa-key text-blue-600 mr-3"></i>
+                    Configure Zoho Credentials
+                </h3>
+                <div class="space-y-6">
+                    <div>
+                        <label for="zoho_client_id" class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client ID</label>
+                        <input type="text" id="zoho_client_id" 
+                               placeholder="Enter your Zoho Client ID"
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200">
+                        <p class="mt-2 text-sm text-gray-500 flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Get this from your Zoho Developer Console
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <label for="zoho_client_secret" class="block text-sm font-semibold text-gray-700 mb-3">Zoho Client Secret</label>
+                        <input type="password" id="zoho_client_secret" 
+                               placeholder="Enter your Zoho Client Secret"
+                               class="block w-full rounded-xl border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-200">
+                        <p class="mt-2 text-sm text-gray-500 flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Get this from your Zoho Developer Console
+                        </p>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button onclick="showSaveCredentialsConfirmationModal()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105">
+                            <i class="fas fa-save mr-2"></i>Save Credentials
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl shadow-lg">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-info-circle text-blue-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-blue-800 font-medium">
+                            <strong>Next Step:</strong> After saving your credentials, click "Connect to Zoho" to authorize the application.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mb-8 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl shadow-lg">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-eye text-yellow-500 text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm text-yellow-800 font-medium">
+                            <strong>View Credentials:</strong> The "View" buttons for your credentials will appear after you connect to Zoho. This is a security feature to ensure your credentials are only accessible after proper authentication.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex space-x-4">
+                <a href="{{ url_for('auth.zoho_auth') }}" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-xl hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-semibold shadow-lg transform hover:scale-105 inline-flex items-center">
+                    <i class="fas fa-plug mr-2"></i>Connect to Zoho
+                </a>
+            </div>
+        `;
+        
+        // Insert the new form after the status card
+        const insertAfterStatusCard = zohoContainer.querySelector('.mb-8.p-6.rounded-2xl.border-2');
+        if (insertAfterStatusCard) {
+            insertAfterStatusCard.insertAdjacentHTML('afterend', newCredentialsForm);
+        }
     }
 }
 
@@ -1417,15 +1673,21 @@ function verifyPasswordForEmailNotification(password) {
             
             checkbox.checked = intendedState;
             
-            // Update visual state
+            // Update visual state with correct classes
             if (intendedState) {
                 toggle.classList.remove('bg-gray-200');
-                toggle.classList.add('bg-blue-600');
-                thumb.classList.add('translate-x-5');
+                toggle.classList.add('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
+                thumb.classList.remove('translate-x-0');
+                thumb.classList.add('translate-x-7');
+                thumb.classList.add('bg-white');
+                thumb.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
             } else {
-                toggle.classList.remove('bg-blue-600');
+                toggle.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
                 toggle.classList.add('bg-gray-200');
-                thumb.classList.remove('translate-x-5');
+                thumb.classList.remove('translate-x-7');
+                thumb.classList.add('translate-x-0');
+                thumb.classList.remove('bg-white');
+                thumb.classList.remove('bg-gradient-to-r', 'from-green-500', 'to-emerald-500');
             }
             
             // Now update the settings

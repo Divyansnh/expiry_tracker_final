@@ -96,6 +96,9 @@
                         <a href="{{ url_for('notifications.notifications') }}" class="nav-link px-4 py-2 text-gray-700 hover:text-blue-600 font-medium rounded-xl transition-all duration-300 {% if request.endpoint == 'notifications.notifications' %}active bg-blue-50 text-blue-600{% endif %}">
                             <i class="fas fa-bell mr-2"></i>Notifications
                         </a>
+                        <a href="{{ url_for('activities.activities') }}" class="nav-link px-4 py-2 text-gray-700 hover:text-blue-600 font-medium rounded-xl transition-all duration-300 {% if request.endpoint == 'activities.activities' %}active bg-blue-50 text-blue-600{% endif %}">
+                            <i class="fas fa-history mr-2"></i>Activity Log
+                        </a>
                         <a href="{{ url_for('reports.reports') }}" class="nav-link px-4 py-2 text-gray-700 hover:text-blue-600 font-medium rounded-xl transition-all duration-300 {% if request.endpoint == 'reports.reports' %}active bg-blue-50 text-blue-600{% endif %}">
                             <i class="fas fa-chart-bar mr-2"></i>Reports
                         </a>
@@ -153,6 +156,9 @@
                         </a>
                         <a href="{{ url_for('notifications.notifications') }}" class="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 {% if request.endpoint == 'notifications.notifications' %}bg-blue-50 text-blue-600{% endif %}">
                             <i class="fas fa-bell mr-3"></i>Notifications
+                        </a>
+                        <a href="{{ url_for('activities.activities') }}" class="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 {% if request.endpoint == 'activities.activities' %}bg-blue-50 text-blue-600{% endif %}">
+                            <i class="fas fa-history mr-3"></i>Activity Log
                         </a>
                         <a href="{{ url_for('reports.reports') }}" class="block px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all duration-300 {% if request.endpoint == 'reports.reports' %}bg-blue-50 text-blue-600{% endif %}">
                             <i class="fas fa-chart-bar mr-3"></i>Reports
@@ -265,6 +271,11 @@
                         <li>
                             <a href="{{ url_for('notifications.notifications') }}" class="text-gray-600 hover:text-blue-600 transition-all duration-300 flex items-center">
                                 <i class="fas fa-bell mr-2 text-blue-500"></i>Notifications
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ url_for('activities.activities') }}" class="text-gray-600 hover:text-blue-600 transition-all duration-300 flex items-center">
+                                <i class="fas fa-history mr-2 text-blue-500"></i>Activity Log
                             </a>
                         </li>
                         <li>

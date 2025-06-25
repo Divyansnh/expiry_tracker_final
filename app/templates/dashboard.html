@@ -215,87 +215,42 @@
                     </div>
                 </div>
                 
-                <div class="space-y-4">
-                    <!-- Activity Items -->
-                    <div class="space-y-3">
-                        <!-- Item Added Activity -->
-                        <div class="flex items-start p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-100">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-plus text-green-600 text-sm"></i>
+                {% if activities %}
+                    <div class="space-y-4">
+                        <!-- Activity Items -->
+                        <div class="space-y-3">
+                            {% for activity in activities %}
+                                <div class="flex items-start p-3 bg-gradient-to-r from-{{ activity.color }}-50 to-{{ activity.color }}-50 rounded-2xl border border-{{ activity.color }}-100">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-8 h-8 bg-{{ activity.color }}-100 rounded-full flex items-center justify-center">
+                                            <i class="{{ activity.icon }} text-{{ activity.color }}-600 text-sm"></i>
+                                        </div>
+                                    </div>
+                                    <div class="ml-3 flex-1">
+                                        <p class="text-sm font-medium text-{{ activity.color }}-800">{{ activity.title }}</p>
+                                        <p class="text-xs text-{{ activity.color }}-600 mt-1">{{ activity.description }}</p>
+                                        <p class="text-xs text-gray-500 mt-1">{{ activity.time_ago }}</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-green-800">New item added</p>
-                                <p class="text-xs text-green-600 mt-1">Product "Organic Milk" was added to inventory</p>
-                                <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
-                            </div>
+                            {% endfor %}
                         </div>
 
-                        <!-- Expiry Alert Activity -->
-                        <div class="flex items-start p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl border border-yellow-100">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-exclamation-triangle text-yellow-600 text-sm"></i>
-                                </div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-yellow-800">Expiry alert</p>
-                                <p class="text-xs text-yellow-600 mt-1">"Fresh Vegetables" expires in 3 days</p>
-                                <p class="text-xs text-gray-500 mt-1">4 hours ago</p>
-                            </div>
-                        </div>
-
-                        <!-- Item Updated Activity -->
-                        <div class="flex items-start p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-edit text-blue-600 text-sm"></i>
-                                </div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-blue-800">Item updated</p>
-                                <p class="text-xs text-blue-600 mt-1">Quantity updated for "Canned Beans"</p>
-                                <p class="text-xs text-gray-500 mt-1">6 hours ago</p>
-                            </div>
-                        </div>
-
-                        <!-- Notification Sent Activity -->
-                        <div class="flex items-start p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-bell text-purple-600 text-sm"></i>
-                                </div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-purple-800">Notification sent</p>
-                                <p class="text-xs text-purple-600 mt-1">Expiry reminder sent for 5 items</p>
-                                <p class="text-xs text-gray-500 mt-1">1 day ago</p>
-                            </div>
-                        </div>
-
-                        <!-- Report Generated Activity -->
-                        <div class="flex items-start p-3 bg-gradient-to-r from-gray-50 to-slate-50 rounded-2xl border border-gray-100">
-                            <div class="flex-shrink-0">
-                                <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                                    <i class="fas fa-chart-bar text-gray-600 text-sm"></i>
-                                </div>
-                            </div>
-                            <div class="ml-3 flex-1">
-                                <p class="text-sm font-medium text-gray-800">Report generated</p>
-                                <p class="text-xs text-gray-600 mt-1">Monthly inventory report created</p>
-                                <p class="text-xs text-gray-500 mt-1">2 days ago</p>
-                            </div>
+                        <!-- View All Activity Button -->
+                        <div class="pt-4 border-t border-gray-100">
+                            <a href="{{ url_for('activities.activities') }}" class="block w-full p-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg transform hover:scale-105 text-center">
+                                <i class="fas fa-list mr-2"></i>View All Activity
+                            </a>
                         </div>
                     </div>
-
-                    <!-- View All Activity Button -->
-                    <div class="pt-4 border-t border-gray-100">
-                        <a href="{{ url_for('notifications.notifications') }}" class="block w-full p-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 font-semibold shadow-lg transform hover:scale-105 text-center">
-                            <i class="fas fa-list mr-2"></i>View All Activity
-                    </a>
+                {% else %}
+                    <div class="text-center py-8">
+                        <div class="w-16 h-16 bg-gradient-to-br from-gray-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-history text-gray-400 text-2xl"></i>
+                        </div>
+                        <p class="text-gray-500 font-medium">No recent activity</p>
+                        <p class="text-sm text-gray-400 mt-1">Start using the system to see your activity history</p>
                     </div>
-                </div>
+                {% endif %}
             </div>
         </div>
 

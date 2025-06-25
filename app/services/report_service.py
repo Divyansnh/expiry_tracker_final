@@ -6,9 +6,13 @@ from app.core.extensions import db
 from app.models.report import Report
 from app.models.item import Item, STATUS_ACTIVE, STATUS_EXPIRING_SOON, STATUS_EXPIRED, STATUS_PENDING
 from app.models.user import User
+from app.services.activity_service import ActivityService
 
 class ReportService:
     """Service for generating and managing inventory reports."""
+    
+    def __init__(self):
+        self.activity_service = ActivityService()
     
     def _calculate_risk_score(self, item) -> float:
         """Calculate risk score for an item (0-100) based on industry standards.
@@ -516,15 +520,57 @@ class ReportService:
             last_week = datetime.now().date() - timedelta(days=7)
             last_week_report = Report.query.filter_by(user_id=user_id, date=last_week).first()
             
-            # Calculate trends
-            trends = {}
-            if last_week_report:
-                trends = {
-                    'expiring_items_change': expiring_items - last_week_report.expiring_items,
-                    'expired_items_change': expired_items - last_week_report.expired_items,
-                    'low_stock_change': low_stock_items - last_week_report.low_stock_items,
-                    'total_value_change': total_value - (last_week_report.total_value or 0)
+            # Prepare metrics for comparison
+            def get_metrics(report_obj, items_list=None):
+                if report_obj:
+                    summary = report_obj.report_data.get('summary', {}) if hasattr(report_obj, 'report_data') and report_obj.report_data else {}
+                    return {
+                        'expiring_items': getattr(report_obj, 'expiring_items', summary.get('expiring_items', 0)),
+                        'expired_items': getattr(report_obj, 'expired_items', summary.get('expired_items', 0)),
+                        'low_stock_items': getattr(report_obj, 'low_stock_items', summary.get('low_stock_items', 0)),
+                        'total_items': getattr(report_obj, 'total_items', summary.get('total_items', 0)),
+                        'active_items': summary.get('active_items', 0),
+                        'critical_items': summary.get('critical_items', 0),
+                        'pending_items': summary.get('pending_items', 0),
+                        'total_value': getattr(report_obj, 'total_value', summary.get('total_value', 0)),
+                        'value_at_risk': summary.get('inventory_metrics', {}).get('value_at_risk', 0)
+                    }
+                elif items_list is not None:
+                    # fallback for legacy or baseline
+                    return {
+                        'expiring_items': len([item for item in items_list if item.status == STATUS_EXPIRING_SOON]),
+                        'expired_items': len([item for item in items_list if item.status == STATUS_EXPIRED]),
+                        'low_stock_items': len([item for item in items_list if (item.quantity or 0) < 10]),
+                        'total_items': len(items_list),
+                        'active_items': len([item for item in items_list if item.status == STATUS_ACTIVE]),
+                        'critical_items': len([item for item in items_list if item.status == STATUS_EXPIRING_SOON and (item.quantity or 0) > 10]),
+                        'pending_items': len([item for item in items_list if item.status == STATUS_PENDING]),
+                        'total_value': sum((item.quantity or 0) * (item.cost_price or 0) for item in items_list),
+                        'value_at_risk': 0
+                    }
+                else:
+                    return {}
+            
+            current_metrics = get_metrics(None, items)
+            last_week_metrics = get_metrics(last_week_report)
+            
+            # Calculate changes
+            comparison = {}
+            for key in current_metrics:
+                current = current_metrics.get(key, 0)
+                previous = last_week_metrics.get(key, 0)
+                abs_change = current - previous
+                pct_change = ((abs_change / previous) * 100) if previous else (100 if current else 0)
+                comparison[key] = {
+                    'current': current,
+                    'previous': previous,
+                    'abs_change': abs_change,
+                    'pct_change': pct_change
                 }
+            
+            historical_comparison = {
+                'last_week': comparison
+            }
             
             # Prepare detailed report data
             low_stock_items_list = [
@@ -560,7 +606,7 @@ class ReportService:
                     'expiring_value': expiring_value,
                     'expired_value': expired_value,
                     'inventory_metrics': inventory_metrics,
-                    'trends': trends,
+                    'trends': comparison,
                     'items_by_status': items_by_status
                 },
                 'risk_analysis': {
@@ -598,49 +644,124 @@ class ReportService:
                     ],
                     'all_items': items_with_risk  # Include all items, not just high-risk ones
                 },
-                'expiry_analysis': comprehensive_expiry_analysis,
-                'action_recommendations': self._generate_action_recommendations(items, inventory_metrics, var_analysis['metrics'])
+                'comprehensive_expiry_analysis': comprehensive_expiry_analysis,
+                'action_recommendations': self._generate_action_recommendations(items, inventory_metrics, var_analysis),
+                'historical_comparison': historical_comparison
             }
             
-            # Create report
-            try:
-                report = Report(
-                    date=current_date,
-                    user_id=user_id,
-                    total_items=total_items,
-                    total_value=total_value,
-                    expiring_items=expiring_items,
-                    expired_items=expired_items,
-                    low_stock_items=low_stock_items,
-                    total_sales=0.0,
-                    total_purchases=0.0,
-                    report_data=report_data,
-                    is_public=False,
-                    public_token=secrets.token_urlsafe(32)
-                )
-                
-                db.session.add(report)
-                db.session.commit()
-                
-                current_app.logger.info(f"Successfully generated and saved report for user {user_id} on {current_date}")
-                return report
-            except Exception as e:
-                current_app.logger.error(f"Error saving report: {str(e)}")
-                db.session.rollback()
-                raise Exception(f"Could not save report: {str(e)}")
+            # Create the report
+            report = Report(
+                user_id=user_id,
+                date=current_date,
+                report_data=report_data,
+                total_items=total_items,
+                total_value=total_value,
+                expiring_items=expiring_items,
+                expired_items=expired_items,
+                low_stock_items=low_stock_items,
+                is_public=False,
+                public_token=secrets.token_urlsafe(32)
+            )
+            
+            db.session.add(report)
+            db.session.commit()
+            
+            # Log activity for report generation
+            self.activity_service.log_report_generated(user_id, "Daily inventory")
+            
+            current_app.logger.info(f"Successfully generated daily report for user {user_id} with {total_items} items")
+            return report
+            
         except Exception as e:
-            current_app.logger.error(f"Error generating report: {str(e)}")
-            raise Exception(f"Could not generate report: {str(e)}")
+            current_app.logger.error(f"Error generating daily report for user {user_id}: {str(e)}")
+            db.session.rollback()
+            return None
     
     def get_report(self, report_id: int) -> Optional[Report]:
         """Get report by ID."""
         report = Report.query.get(report_id)
         if report:
             if report.report_data is None:
-                current_app.logger.warning(f"Report {report_id} has no report_data, initializing empty dict")
-                report.report_data = {}
+                current_app.logger.warning(f"Report {report_id} has no report_data, attempting to regenerate")
+                # Try to regenerate the report data
+                try:
+                    # Get all items for the user to regenerate report data
+                    items = Item.query.filter_by(user_id=report.user_id).all()
+                    
+                    # Calculate basic metrics
+                    total_items = len(items)
+                    expiring_items = len([item for item in items if item.status == STATUS_EXPIRING_SOON])
+                    expired_items = len([item for item in items if item.status == STATUS_EXPIRED])
+                    pending_items = len([item for item in items if item.status == STATUS_PENDING])
+                    active_items = len([item for item in items if item.status == STATUS_ACTIVE])
+                    low_stock_items = len([item for item in items if (item.quantity or 0) < 10])
+                    total_value = sum((item.quantity or 0) * (item.cost_price or 0) for item in items)
+                    
+                    # Calculate historical comparison (last 7 days)
+                    last_week = datetime.now().date() - timedelta(days=7)
+                    last_week_report = Report.query.filter_by(user_id=report.user_id, date=last_week).first()
+                    
+                    historical_comparison = {}
+                    if last_week_report:
+                        historical_comparison = {
+                            'last_week': {
+                                'expiring_items': last_week_report.expiring_items,
+                                'expired_items': last_week_report.expired_items,
+                                'low_stock_items': last_week_report.low_stock_items,
+                                'total_items': last_week_report.total_items,
+                                'total_value': last_week_report.total_value
+                            }
+                        }
+                    else:
+                        # If no last week report, use current values as baseline
+                        historical_comparison = {
+                            'last_week': {
+                                'expiring_items': expiring_items,
+                                'expired_items': expired_items,
+                                'low_stock_items': low_stock_items,
+                                'total_items': total_items,
+                                'total_value': total_value
+                            }
+                        }
+                    
+                    # Create a basic report_data structure
+                    report.report_data = {
+                        'summary': {
+                            'total_items': total_items,
+                            'active_items': active_items,
+                            'expired_items': expired_items,
+                            'expiring_items': expiring_items,
+                            'pending_items': pending_items,
+                            'low_stock_items': low_stock_items,
+                            'total_value': total_value,
+                            'items_by_status': {
+                                'active': active_items,
+                                'expired': expired_items,
+                                'expiring_soon': expiring_items,
+                                'pending_expiry_date': pending_items
+                            }
+                        },
+                        'risk_analysis': {
+                            'critical_items': [],
+                            'high_value_expiring': [],
+                            'all_items': []
+                        },
+                        'comprehensive_expiry_analysis': {},
+                        'action_recommendations': [],
+                        'historical_comparison': historical_comparison
+                    }
+                    
+                    # Save the updated report
+                    db.session.commit()
+                    current_app.logger.info(f"Successfully regenerated report_data for report {report_id}")
+                    
+                except Exception as e:
+                    current_app.logger.error(f"Failed to regenerate report_data for report {report_id}: {str(e)}")
+                    # Fallback to empty dict if regeneration fails
+                    report.report_data = {}
+                    db.session.commit()
             else:
-                current_app.logger.info(f"Retrieved report {report_id} with data: {report.report_data}")
+                current_app.logger.info(f"Retrieved report {report_id} with data: {list(report.report_data.keys()) if report.report_data else 'None'}")
         else:
             current_app.logger.warning(f"Report {report_id} not found")
         return report

@@ -87,7 +87,8 @@ def validate_request(app):
     """Validate request data."""
     @app.before_request
     def before_request():
-        if request.is_json:
+        # Only validate JSON for requests that should have JSON content
+        if request.is_json and request.method in ['POST', 'PUT', 'PATCH']:
             try:
                 request.get_json()
             except Exception as e:
