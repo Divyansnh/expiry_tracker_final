@@ -239,10 +239,35 @@ class TestingConfig(Config):
     ZOHO_API_BASE_URL = "https://www.zohoapis.eu/inventory/v1"
     ZOHO_ACCOUNTS_URL = "https://accounts.zoho.eu"
 
+class DemoConfig(Config):
+    """Demo configuration for portfolio showcase."""
+    DEBUG = False
+    TESTING = False
+    
+    # Demo session settings
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    
+    # Demo database settings (use SQLite for simplicity)
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'sqlite:///demo.db')
+    SQLALCHEMY_ENGINE_OPTIONS = {}  # No PostgreSQL-specific options
+    
+    # Demo Zoho settings (optional - won't break if not provided)
+    ZOHO_CLIENT_ID = os.environ.get('ZOHO_CLIENT_ID', None)  # Optional
+    ZOHO_CLIENT_SECRET = os.environ.get('ZOHO_CLIENT_SECRET', None)  # Optional
+    ZOHO_REDIRECT_URI = os.environ.get('ZOHO_REDIRECT_URI', None)  # Optional
+    ZOHO_ORGANIZATION_ID = os.environ.get('ZOHO_ORGANIZATION_ID', None)  # Optional
+    ZOHO_ACCESS_TOKEN_URL = "https://accounts.zoho.eu/oauth/v2/token"
+    ZOHO_AUTHORIZE_URL = "https://accounts.zoho.eu/oauth/v2/auth"
+    ZOHO_API_BASE_URL = "https://www.zohoapis.eu/inventory/v1"
+    ZOHO_ACCOUNTS_URL = "https://accounts.zoho.eu"
+
 # Configuration dictionary
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
     'testing': TestingConfig,
+    'demo': DemoConfig,
     'default': DevelopmentConfig
 } 
