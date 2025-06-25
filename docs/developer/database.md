@@ -406,12 +406,6 @@ migrations/
 2. **Foreign Key Constraints**: Prevent orphaned records
 3. **Input Validation**: Server-side validation for all inputs
 
-### Backup Strategy
-
-1. **Regular Backups**: Automated daily backups
-2. **Point-in-Time Recovery**: Transaction log backups
-3. **Encrypted Backups**: Backup files encrypted at rest
-4. **Offsite Storage**: Backups stored in multiple locations
 
 ---
 
