@@ -8,7 +8,7 @@ from flask_migrate import upgrade
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = create_app('production')
+app = create_app('demo')
 
 def init_db():
     """Initialize the database."""
@@ -16,16 +16,25 @@ def init_db():
         try:
             logger.info("Checking database tables...")
             db.create_all()
+            logger.info("Database tables created successfully")
+            
+            # Only run migrations if migrations directory exists
             if os.path.exists('migrations'):
-                logger.info("Running database migrations...")
-                upgrade()
+                try:
+                    logger.info("Running database migrations...")
+                    upgrade()
+                    logger.info("Database migrations completed")
+                except Exception as e:
+                    logger.warning(f"Migration failed (this is okay for demo): {str(e)}")
+                    
             logger.info("Database initialization complete")
         except Exception as e:
             logger.error(f"Error during database initialization: {str(e)}")
-            raise
+            # Don't raise for demo - just log the error
+            logger.info("Continuing with demo setup...")
 
 if __name__ == '__main__':
-    logger.info("Starting production application...")
+    logger.info("Starting demo application...")
     init_db()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
 else:
