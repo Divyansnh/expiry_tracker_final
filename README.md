@@ -175,20 +175,6 @@ MAIL_PASSWORD=your-app-password
 - **Load Balancing**: Stateless application design
 - **Monitoring**: Comprehensive logging and error tracking
 
-## 🧪 **Testing & Quality Assurance**
-
-```bash
-# Run test suite
-pytest
-
-# Code quality checks
-black .
-flake8
-mypy .
-
-# Security audit
-bandit -r app/
-```
 
 ## 🤝 **Contributing**
 
@@ -213,25 +199,20 @@ git push origin feature/amazing-feature
 ## 📊 **Project Statistics**
 
 - **Lines of Code**: 15,000+
-- **Test Coverage**: 85%+
 - **API Endpoints**: 25+
-- **Database Tables**: 8+
-- **External Integrations**: 3+
+- **Database Tables**: 7
+- **External Integrations**: 3
 
 ## 🏆 **Achievements & Recognition**
 
-- **Production Ready**: Deployed and tested in real-world scenarios
 - **Enterprise Grade**: Scalable architecture for business use
 - **AI Integration**: Advanced OCR capabilities
 - **Comprehensive Documentation**: Developer and user guides
 - **Security Focused**: Industry-standard security practices
 
-## 📞 **Contact & Support**
+## 📞 **Support**
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/Divyansnh/expiry_tracker_final/issues)
 - **Documentation**: [Complete documentation](docs/README.md)
-- **Email**: [Your professional email]
-- **LinkedIn**: [Your LinkedIn profile]
 
 ## 📄 **License**
 
@@ -241,11 +222,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Built with ❤️ by [Your Name]**  
+**Built with ❤️ by [Divyansh]**  
 *Professional Software Engineer & Full-Stack Developer*
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-blue.svg)](https://linkedin.com/in/your-profile)
 [![GitHub](https://img.shields.io/badge/GitHub-Follow-black.svg)](https://github.com/Divyansnh)
-[![Portfolio](https://img.shields.io/badge/Portfolio-View-green.svg)](https://your-portfolio.com)
+
 
 </div> 
