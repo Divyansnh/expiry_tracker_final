@@ -29,19 +29,27 @@ def create_app(config_name=None):
         config_name = os.environ.get('FLASK_ENV', 'development')
     
     # Load config
-    app.config.from_object(config[config_name])
+    try:
+        app.config.from_object(config[config_name])
+    except KeyError:
+        # Fallback to development if config not found
+        app.config.from_object(config['development'])
     
     # Configure logging
     if not app.debug and not app.testing:
-        if not os.path.exists('logs'):
-            os.mkdir('logs')
-        file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
-        file_handler.setFormatter(logging.Formatter(
-            '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
-        ))
-        file_handler.setLevel(logging.INFO)
-        app.logger.addHandler(file_handler)
-        app.logger.setLevel(logging.INFO)
+        try:
+            if not os.path.exists('logs'):
+                os.mkdir('logs')
+            file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+            file_handler.setFormatter(logging.Formatter(
+                '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+            ))
+            file_handler.setLevel(logging.INFO)
+            app.logger.addHandler(file_handler)
+            app.logger.setLevel(logging.INFO)
+        except Exception as e:
+            # Don't fail if logging setup fails
+            print(f"Warning: Could not set up file logging: {e}")
         
         # Don't log sensitive configuration
         app.logger.info('Expiry Tracker startup')
@@ -53,10 +61,14 @@ def create_app(config_name=None):
         app.logger.info('MAIL_DEFAULT_SENDER: %s', app.config.get('MAIL_DEFAULT_SENDER'))
     
     # Initialize extensions
-    init_extensions(app)
+    try:
+        init_extensions(app)
+    except Exception as e:
+        app.logger.error(f"Error initializing extensions: {e}")
+        # Continue anyway for demo
     
-    # Only initialize scheduler if not in testing mode
-    if not app.config.get('TESTING', False):
+    # Only initialize scheduler if not in testing mode and not in demo mode
+    if not app.config.get('TESTING', False) and config_name != 'demo':
         app.logger.info("Checking scheduler initialization conditions...")
         app.logger.info(f"Testing mode: {app.config.get('TESTING', False)}")
         app.logger.info(f"WERKZEUG_RUN_MAIN: {os.environ.get('WERKZEUG_RUN_MAIN')}")
@@ -65,88 +77,105 @@ def create_app(config_name=None):
         if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
             app.logger.info("Initializing scheduler in child process...")
             # Import task functions
-            from app.tasks.scheduler_tasks import (
-                cleanup_expired_task,
-                cleanup_unverified_task,
-                send_daily_notifications_task
-            )
-            
-            # Add jobs with proper configuration
             try:
-                scheduler.add_job(
-                    id='cleanup_expired_items',
-                    func=cleanup_expired_task,
-                    trigger='cron',
-                    hour=1,  # Midnight
-                    minute=2,
-                    timezone='Europe/London',
-                    misfire_grace_time=60,  # Allow job to run up to 12 hours late
-                    coalesce=True,  # Run missed jobs only once on startup
-                    max_instances=1,  # Allow only one instance to run at a time
-                    replace_existing=True  # Replace existing job if it exists
+                from app.tasks.scheduler_tasks import (
+                    cleanup_expired_task,
+                    cleanup_unverified_task,
+                    send_daily_notifications_task
                 )
-                app.logger.info("Added cleanup_expired_items job")
+                
+                # Add jobs with proper configuration
+                try:
+                    scheduler.add_job(
+                        id='cleanup_expired_items',
+                        func=cleanup_expired_task,
+                        trigger='cron',
+                        hour=1,  # Midnight
+                        minute=2,
+                        timezone='Europe/London',
+                        misfire_grace_time=60,  # Allow job to run up to 12 hours late
+                        coalesce=True,  # Run missed jobs only once on startup
+                        max_instances=1,  # Allow only one instance to run at a time
+                        replace_existing=True  # Replace existing job if it exists
+                    )
+                    app.logger.info("Added cleanup_expired_items job")
+                except Exception as e:
+                    app.logger.warning(f"Failed to add cleanup_expired_items job: {str(e)}")
+                
+                try:
+                    scheduler.add_job(
+                        id='cleanup_unverified_accounts',
+                        func=cleanup_unverified_task,
+                        trigger='cron',
+                        hour=21,  # Midnight
+                        minute=13,
+                        timezone='Europe/London',
+                        misfire_grace_time=60,  # Allow job to run up to 12 hours late
+                        coalesce=True,  # Run missed jobs only once on startup
+                        max_instances=1,  # Allow only one instance to run at a time
+                        replace_existing=True  # Replace existing job if it exists
+                    )
+                    app.logger.info("Added cleanup_unverified_accounts job")
+                except Exception as e:
+                    app.logger.warning(f"Failed to add cleanup_unverified_accounts job: {str(e)}")
+                
+                try:
+                    scheduler.add_job(
+                        id='send_daily_notifications',
+                        func=send_daily_notifications_task,
+                        trigger='cron',
+                        hour=21,  # 1 AM BST
+                        minute=11,
+                        timezone='Europe/London',
+                        misfire_grace_time=60,  # Allow job to run up to 12 hours late
+                        coalesce=True,  # Run missed jobs only once on startup
+                        max_instances=1,  # Allow only one instance to run at a time
+                        replace_existing=True  # Replace existing job if it exists
+                    )
+                    app.logger.info("Added send_daily_notifications job")
+                except Exception as e:
+                    app.logger.warning(f"Failed to add send_daily_notifications job: {str(e)}")
+                
+                # Log all scheduled jobs
+                all_jobs = scheduler.get_jobs()
+                app.logger.info("All scheduled jobs:")
+                for job in all_jobs:
+                    app.logger.info(f"Job ID: {job.id}, Next Run: {job.next_run_time}")
             except Exception as e:
-                app.logger.warning(f"Failed to add cleanup_expired_items job: {str(e)}")
-            
-            try:
-                scheduler.add_job(
-                    id='cleanup_unverified_accounts',
-                    func=cleanup_unverified_task,
-                    trigger='cron',
-                    hour=21,  # Midnight
-                    minute=13,
-                    timezone='Europe/London',
-                    misfire_grace_time=60,  # Allow job to run up to 12 hours late
-                    coalesce=True,  # Run missed jobs only once on startup
-                    max_instances=1,  # Allow only one instance to run at a time
-                    replace_existing=True  # Replace existing job if it exists
-                )
-                app.logger.info("Added cleanup_unverified_accounts job")
-            except Exception as e:
-                app.logger.warning(f"Failed to add cleanup_unverified_accounts job: {str(e)}")
-            
-            try:
-                scheduler.add_job(
-                    id='send_daily_notifications',
-                    func=send_daily_notifications_task,
-                    trigger='cron',
-                    hour=21,  # 1 AM BST
-                    minute=11,
-                    timezone='Europe/London',
-                    misfire_grace_time=60,  # Allow job to run up to 12 hours late
-                    coalesce=True,  # Run missed jobs only once on startup
-                    max_instances=1,  # Allow only one instance to run at a time
-                    replace_existing=True  # Replace existing job if it exists
-                )
-                app.logger.info("Added send_daily_notifications job")
-            except Exception as e:
-                app.logger.warning(f"Failed to add send_daily_notifications job: {str(e)}")
-            
-            # Log all scheduled jobs
-            all_jobs = scheduler.get_jobs()
-            app.logger.info("All scheduled jobs:")
-            for job in all_jobs:
-                app.logger.info(f"Job ID: {job.id}, Next Run: {job.next_run_time}")
+                app.logger.warning(f"Could not initialize scheduler tasks: {e}")
+    else:
+        app.logger.info("Skipping scheduler initialization (demo/testing mode)")
     
     # Register error handlers
-    register_error_handlers(app)
+    try:
+        register_error_handlers(app)
+    except Exception as e:
+        app.logger.error(f"Error registering error handlers: {e}")
     
     # Register middleware
-    log_request(app)
-    handle_cors(app)
-    validate_request(app)
+    try:
+        log_request(app)
+        handle_cors(app)
+        validate_request(app)
+    except Exception as e:
+        app.logger.error(f"Error registering middleware: {e}")
     
     # Register blueprints
-    app.register_blueprint(main_bp)
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(reports_bp)
-    app.register_blueprint(notifications_bp)
-    app.register_blueprint(activities_bp)
-    app.register_blueprint(api_bp, url_prefix='/api/v1')
+    try:
+        app.register_blueprint(main_bp)
+        app.register_blueprint(auth_bp, url_prefix='/auth')
+        app.register_blueprint(reports_bp)
+        app.register_blueprint(notifications_bp)
+        app.register_blueprint(activities_bp)
+        app.register_blueprint(api_bp, url_prefix='/api/v1')
+    except Exception as e:
+        app.logger.error(f"Error registering blueprints: {e}")
     
     # Create database tables
-    with app.app_context():
-        db.create_all()
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception as e:
+        app.logger.error(f"Error creating database tables: {e}")
     
     return app 

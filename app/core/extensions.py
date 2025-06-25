@@ -41,64 +41,94 @@ def init_extensions(app):
         app.config['SESSION_COOKIE_EXPIRES'] = timedelta(hours=24)
     
     # Initialize session
-    Session(app)
+    try:
+        Session(app)
+    except Exception as e:
+        print(f"Warning: Could not initialize session: {e}")
     
     # Initialize database
-    db.init_app(app)
+    try:
+        db.init_app(app)
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        raise
     
     # Initialize login manager
-    login_manager.init_app(app)
-    # Use cast to handle type checking for login_view
-    cast(Any, login_manager).login_view = 'auth.login'
-    login_manager.login_message_category = 'info'
+    try:
+        login_manager.init_app(app)
+        # Use cast to handle type checking for login_view
+        cast(Any, login_manager).login_view = 'auth.login'
+        login_manager.login_message_category = 'info'
+    except Exception as e:
+        print(f"Warning: Could not initialize login manager: {e}")
     
     # Initialize JWT manager
-    jwt.init_app(app)
+    try:
+        jwt.init_app(app)
+    except Exception as e:
+        print(f"Warning: Could not initialize JWT manager: {e}")
     
     # Initialize migrations
-    migrate.init_app(app, db)
+    try:
+        migrate.init_app(app, db)
+    except Exception as e:
+        print(f"Warning: Could not initialize migrations: {e}")
     
     # Initialize CORS with proper configuration
-    cors.init_app(app, supports_credentials=True, resources={
-        r"/*": {
-            "origins": ["http://localhost:5000", "http://127.0.0.1:5000"],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
-            "supports_credentials": True
-        }
-    })
+    try:
+        cors.init_app(app, supports_credentials=True, resources={
+            r"/*": {
+                "origins": ["http://localhost:5000", "http://127.0.0.1:5000"],
+                "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization", "X-CSRFToken"],
+                "supports_credentials": True
+            }
+        })
+    except Exception as e:
+        print(f"Warning: Could not initialize CORS: {e}")
     
     # Initialize mail
-    mail.init_app(app)
-    
-    # Log mail server configuration
-    print("Mail server configuration:")
-    print(f"MAIL_SERVER: {app.config.get('MAIL_SERVER')}")
-    print(f"MAIL_PORT: {app.config.get('MAIL_PORT')}")
-    print(f"MAIL_USE_TLS: {app.config.get('MAIL_USE_TLS')}")
-    print(f"MAIL_USERNAME: {app.config.get('MAIL_USERNAME')}")
-    print(f"MAIL_DEFAULT_SENDER: {app.config.get('MAIL_DEFAULT_SENDER')}")
-
-    # Initialize scheduler with proper configuration
-    if not scheduler.running:
-        # Configure scheduler to use SQLAlchemy job store
-        app.config['SCHEDULER_JOBSTORES'] = {
-            'default': SQLAlchemyJobStore(url=app.config['SQLALCHEMY_DATABASE_URI'])
-        }
-        app.config['SCHEDULER_EXECUTORS'] = {
-            'default': {'type': 'threadpool', 'max_workers': 1}
-        }
-        app.config['SCHEDULER_JOB_DEFAULTS'] = {
-            'coalesce': True,
-            'max_instances': 1,
-            'replace_existing': True
-        }
-        app.config['SCHEDULER_API_ENABLED'] = False
+    try:
+        mail.init_app(app)
         
-        # Initialize and start scheduler
-        scheduler.init_app(app)
-        scheduler.start()
-        app.logger.info("Scheduler initialized with SQLAlchemy job store")
+        # Log mail server configuration
+        print("Mail server configuration:")
+        print(f"MAIL_SERVER: {app.config.get('MAIL_SERVER')}")
+        print(f"MAIL_PORT: {app.config.get('MAIL_PORT')}")
+        print(f"MAIL_USE_TLS: {app.config.get('MAIL_USE_TLS')}")
+        print(f"MAIL_USERNAME: {app.config.get('MAIL_USERNAME')}")
+        print(f"MAIL_DEFAULT_SENDER: {app.config.get('MAIL_DEFAULT_SENDER')}")
+    except Exception as e:
+        print(f"Warning: Could not initialize mail: {e}")
+
+    # Initialize scheduler with proper configuration (skip for demo mode)
+    if app.config.get('FLASK_ENV') != 'demo' and not scheduler.running:
+        try:
+            # Configure scheduler to use SQLAlchemy job store
+            app.config['SCHEDULER_JOBSTORES'] = {
+                'default': SQLAlchemyJobStore(url=app.config['SQLALCHEMY_DATABASE_URI'])
+            }
+            app.config['SCHEDULER_EXECUTORS'] = {
+                'default': {'type': 'threadpool', 'max_workers': 1}
+            }
+            app.config['SCHEDULER_JOB_DEFAULTS'] = {
+                'coalesce': True,
+                'max_instances': 1,
+                'replace_existing': True
+            }
+            app.config['SCHEDULER_API_ENABLED'] = False
+            
+            # Initialize and start scheduler
+            scheduler.init_app(app)
+            scheduler.start()
+            app.logger.info("Scheduler initialized with SQLAlchemy job store")
+        except Exception as e:
+            print(f"Warning: Could not initialize scheduler: {e}")
+    else:
+        print("Skipping scheduler initialization (demo mode or already running)")
 
     # Initialize CSRF protection
-    csrf.init_app(app) 
+    try:
+        csrf.init_app(app)
+    except Exception as e:
+        print(f"Warning: Could not initialize CSRF protection: {e}") 
