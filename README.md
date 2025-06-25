@@ -5,7 +5,6 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-13+-blue.svg)](https://postgresql.org)
 [![Azure](https://img.shields.io/badge/Azure-Cognitive%20Services-orange.svg)](https://azure.microsoft.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://github.com/Divyansnh/expiry_tracker_final)
 
 > **A comprehensive enterprise-grade inventory management system with AI-powered expiry date tracking, automated notifications, and seamless third-party integrations.**
 
@@ -28,6 +27,8 @@ This system solves critical inventory management challenges faced by businesses:
 - **OCR Processing**: AI-powered date extraction from product images
 - **Notification System**: Automated email and in-app alerts
 - **Reporting Engine**: Comprehensive inventory and expiry reports
+- **Recent Activity**: Tracks your activities performed in the system
+
 
 ## 🛠️ **Technical Architecture**
 
@@ -53,7 +54,6 @@ This system solves critical inventory management challenges faced by businesses:
 
 ### **DevOps & Infrastructure**
 - **Database Migrations** with Alembic
-- **Automated Testing** with pytest
 - **Code Quality** with Black, Flake8, MyPy
 - **Backup System** with automated PostgreSQL backups
 - **Logging & Monitoring** with comprehensive error tracking
@@ -156,7 +156,6 @@ MAIL_PASSWORD=your-app-password
 - **[Architecture Guide](docs/developer/architecture.md)** - System design
 - **[Database Schema](docs/developer/database.md)** - Data models
 - **[Security Implementation](docs/developer/security.md)** - Security features
-- **[Contributing Guidelines](CONTRIBUTING.md)** - Development workflow
 
 ## 🔒 **Security Features**
 
@@ -175,10 +174,6 @@ MAIL_PASSWORD=your-app-password
 - **Load Balancing**: Stateless application design
 - **Monitoring**: Comprehensive logging and error tracking
 
-
-## 🤝 **Contributing**
-
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
 ### **Development Setup**
 ```bash
