@@ -1,3 +1,4 @@
+
 # 🏪 Expiry Tracker - Enterprise Inventory Management System
 
 [![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://python.org)
@@ -8,6 +9,9 @@
 
 > **A comprehensive enterprise-grade inventory management system with AI-powered expiry date tracking, automated notifications, and seamless third-party integrations.**
 
+## 🚀 **Live Demo**
+https://www.youtube.com/watch?v=Dge_LY-7zbg
+
 ## 🎯 **Business Value & Impact**
 
 This system solves critical inventory management challenges faced by businesses:
@@ -17,10 +21,6 @@ This system solves critical inventory management challenges faced by businesses:
 - **📧 Automated Alerts**: Proactive notifications reduce waste and improve efficiency
 - **🔄 Integration Ready**: Seamless Zoho CRM integration for enterprise workflows
 - **📊 Data Insights**: Comprehensive reporting for informed decision-making
-
-## 🚀 **Live Demo & Screenshots**
-
-> **Note**: Live demo links will be added once deployed. Currently showcasing local development capabilities.
 
 ### **Key Features Showcase**
 - **Dashboard Analytics**: Real-time inventory overview with expiry alerts
