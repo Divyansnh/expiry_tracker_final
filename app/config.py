@@ -154,8 +154,8 @@ class DevelopmentConfig(Config):
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key')  # Only in development
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', 'postgresql://localhost/expiry_tracker_v2')
     
-    # Fix server name for development
-    SERVER_NAME = None
+    # Fix server name for development - enable external URL generation
+    SERVER_NAME = 'localhost:5000'
     
     # Development session settings
     SESSION_TYPE = 'filesystem'

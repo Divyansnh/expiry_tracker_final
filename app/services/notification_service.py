@@ -43,12 +43,9 @@ class NotificationService:
         try:
             current_app.logger.info("Starting expiry date check at %s", datetime.now())
             
-            # Get all items with expiry dates that are not already expired
+            # Get all items with expiry dates (including expired items)
             query = Item.query.filter(
-                and_(
-                    cast(BinaryExpression, Item.expiry_date.isnot(None)),
-                    cast(BinaryExpression, Item.status != STATUS_EXPIRED)
-                )
+                cast(BinaryExpression, Item.expiry_date.isnot(None))
             )
             
             # If user_id is provided, only get items for that user
@@ -73,7 +70,11 @@ class NotificationService:
                     user_items[item.user_id] = []
                 
                 # Set priority based on days until expiry
-                if days_until_expiry <= 1:  # Today or tomorrow
+                if days_until_expiry < 0:  # Already expired
+                    priority = 'high'
+                    # Log expiry alert for expired items
+                    self.activity_service.log_expiry_alert(item.user_id, item.name, days_until_expiry)
+                elif days_until_expiry <= 1:  # Today or tomorrow
                     priority = 'high'
                     # Log expiry alert for urgent items
                     self.activity_service.log_expiry_alert(item.user_id, item.name, days_until_expiry)
